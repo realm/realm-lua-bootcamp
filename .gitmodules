@@ -1,0 +1,6 @@
+[submodule "external/lua"]
+	path = external/lua
+	url = https://github.com/walterschell/Lua
+[submodule "external/realm-core"]
+	path = external/realm-core
+	url = https://github.com/realm/realm-core.git

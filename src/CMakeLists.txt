@@ -1,0 +1,13 @@
+add_executable(realm-lua-playground
+    main.cpp
+)
+
+target_compile_definitions(realm-lua-playground PUBLIC
+    SCRIPT_SOURCE_PATH="${CMAKE_SOURCE_DIR}/lib"
+)
+
+target_link_libraries(realm-lua-playground 
+    Lua::Library 
+    Realm::ObjectStore 
+    Realm::QueryParser
+)

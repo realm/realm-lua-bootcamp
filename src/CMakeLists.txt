@@ -1,3 +1,5 @@
+set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
+
 add_executable(realm-lua-playground
     main.cpp
 )
@@ -10,4 +12,5 @@ target_link_libraries(realm-lua-playground
     Lua::Library 
     Realm::ObjectStore 
     Realm::QueryParser
+    RealmFFIStatic
 )

@@ -115,39 +115,48 @@ static realm_property_type_e property_type_from_string(const char* propstring) {
 }
 
 static int l_realm_open(lua_State* L) {
+    // Drop everything other than the first argument
     lua_settop(L, 1);
     luaL_checktype(L, 1, LUA_TTABLE);
 
     size_t classes_len = lua_rawlen(L, 1);
+    
+    // Array of classes and a two-dimensional
+    // array of properties for every class.
     realm_class_info_t classes[classes_len];
     const realm_property_info_t* properties[classes_len];;
 
     for (size_t i = 1; i <= classes_len; i++) {
         lua_rawgeti(L, 1, i);
 
+        // Use name field to create initial class info
         lua_getfield(L, -1, "name");
-        
         realm_class_info_t class_Info{
             .name = lua_tostring(L, -1),
             .primary_key = "",
             .num_properties = 0,
         };
 
+        // Get properties and iterate through them
         lua_getfield(L, -2, "properties");
         luaL_checktype(L, -1, LUA_TTABLE);
 
-        std::vector<realm_property_info_t> classProperties = {};
+        std::vector<realm_property_info_t> class_properties = {};
     
         lua_pushnil(L);
         int j = 0;
+        // Iterate through key-values of a specific class' properties table.
         while(lua_next(L, -2) != 0) {
             lua_pushvalue(L, -2);
             luaL_checktype(L, -2, LUA_TSTRING);
             luaL_checktype(L, -1, LUA_TSTRING);
 
-            classProperties.push_back(realm_property_info_t{
+            class_properties.push_back(realm_property_info_t{
+                // -1 is equivalent to the table key.
                 .name = lua_tostring(L, -1),
-                .public_name = "", //lua_tostring(L, -2),
+                // TODO?: add support for this
+                .public_name = "",
+                // -2 is equivalent to the table value
                 .type = property_type_from_string(lua_tostring(L, -2)),
 
                 .link_target = "",
@@ -156,8 +165,9 @@ static int l_realm_open(lua_State* L) {
             j++;
             lua_pop(L, 2);
         }
-        class_Info.num_properties = classProperties.size();        
-        properties[i-1] = classProperties.data();
+        // Add the parsed class and property information to the array.
+        class_Info.num_properties = class_properties.size();        
+        properties[i-1] = class_properties.data();
         classes[i-1] = class_Info;
     }
     realm_error_t error;
@@ -184,6 +194,7 @@ static int l_realm_open(lua_State* L) {
         // TODO: print error
         return 1;
     }
+    realm_release(realm);
     return 1;
 }
 

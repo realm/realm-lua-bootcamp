@@ -1,5 +1,6 @@
 #include <iostream>
 #include <filesystem>
+#include <vector>
 
 #include <realm.h>
 #include <lua.hpp>
@@ -103,19 +104,87 @@ static void realm_first_steps() {
     realm_release(realm);
 }
 
-static int my_native_lua_sum(lua_State* L) {
-    int number_of_arguments = lua_gettop(L);
+static realm_property_type_e property_type_from_string(const char* propstring) {
+    if (strcmp(propstring, "integer") == 0) return RLM_PROPERTY_TYPE_INT;
+    else if (strcmp(propstring, "string") == 0) return RLM_PROPERTY_TYPE_STRING;
+    else {
+        // TODO: all types
+        std::cerr << "Unknown type " << propstring;
+        return RLM_PROPERTY_TYPE_MIXED;
+    }
+}
+
+static int l_realm_open(lua_State* L) {
+    lua_settop(L, 1);
+    luaL_checktype(L, 1, LUA_TTABLE);
+
+    size_t classes_len = lua_rawlen(L, 1);
+    realm_class_info_t classes[classes_len];
+    const realm_property_info_t* properties[classes_len];;
+
+    for (size_t i = 1; i <= classes_len; i++) {
+        lua_rawgeti(L, 1, i);
+
+        lua_getfield(L, -1, "name");
+        
+        realm_class_info_t class_Info{
+            .name = lua_tostring(L, -1),
+            .primary_key = "",
+            .num_properties = 0,
+        };
+
+        lua_getfield(L, -2, "properties");
+        luaL_checktype(L, -1, LUA_TTABLE);
+
+        std::vector<realm_property_info_t> classProperties = {};
     
-    int64_t sum = 0;
-    for (int arg = 1; arg <= number_of_arguments; arg++) {
-        if (!lua_isnumber(L, arg)) {
-            return luaL_error(L, "Argument number %d is not of type number!", arg);
+        lua_pushnil(L);
+        int j = 0;
+        while(lua_next(L, -2) != 0) {
+            lua_pushvalue(L, -2);
+            luaL_checktype(L, -2, LUA_TSTRING);
+            luaL_checktype(L, -1, LUA_TSTRING);
+
+            classProperties.push_back(realm_property_info_t{
+                .name = lua_tostring(L, -1),
+                .public_name = "", //lua_tostring(L, -2),
+                .type = property_type_from_string(lua_tostring(L, -2)),
+
+                .link_target = "",
+                .link_origin_property_name = "",
+            });
+            j++;
+            lua_pop(L, 2);
         }
-        sum += lua_tonumber(L, arg);
+        class_Info.num_properties = classProperties.size();        
+        properties[i-1] = classProperties.data();
+        classes[i-1] = class_Info;
+    }
+    realm_error_t error;
+
+    realm_schema_t* schema = realm_schema_new(classes, classes_len, properties);
+    if (!schema) {
+        realm_get_last_error(&error);
+        // TODO: print error
+        return 1;
     }
 
-    lua_pushinteger(L, sum);
-    return 1; // number of returned values;
+    realm_config_t* config = realm_config_new();
+    realm_config_set_path(config, "./bootcamp.realm");
+    realm_config_set_schema(config, schema);
+    realm_config_set_schema_version(config, 0);
+    realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_SOFT_RESET_FILE); // delete realm file if there are schema conflicts
+    realm_release(schema);
+    
+    realm_t* realm = realm_open(config);
+    realm_release(config);
+
+    if (!realm) {
+        realm_get_last_error(&error);
+        // TODO: print error
+        return 1;
+    }
+    return 1;
 }
 
 int main(int argc, char** argv) {
@@ -127,8 +196,8 @@ int main(int argc, char** argv) {
     realm_lib_open(L);
 
     // Push native function to the stack, and expose it as a global
-    lua_pushcfunction(L, &my_native_lua_sum);
-    lua_setglobal(L, "my_custom_sum");
+    lua_pushcfunction(L, &l_realm_open);
+    lua_setglobal(L, "c_realm_open");
 
     int status;
 

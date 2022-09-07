@@ -135,19 +135,24 @@ static int l_realm_open(lua_State* L) {
             .primary_key = "",
             .num_properties = 0,
         };
+        lua_pop(L, 1);
 
         // Get properties and iterate through them
-        lua_getfield(L, -2, "properties");
+        lua_getfield(L, -1, "properties");
         luaL_checktype(L, -1, LUA_TTABLE);
 
         std::vector<realm_property_info_t> class_properties = {};
     
-        lua_pushnil(L);
         // Iterate through key-values of a specific class' properties table.
+        // (Push nil since lua_next starts by popping.)
+        lua_pushnil(L);
         while(lua_next(L, -2) != 0) {
+            // Copy the key.
             lua_pushvalue(L, -2);
-            luaL_checktype(L, -2, LUA_TSTRING);
+            // The copied key.
             luaL_checktype(L, -1, LUA_TSTRING);
+            // The value.
+            luaL_checktype(L, -2, LUA_TSTRING);
 
             class_properties.push_back(realm_property_info_t{
                 // -1 is equivalent to the table key.
@@ -162,6 +167,7 @@ static int l_realm_open(lua_State* L) {
             });
             lua_pop(L, 2);
         }
+
         // Add the parsed class and property information to the array.
         class_Info.num_properties = class_properties.size();        
         properties[i-1] = class_properties.data();

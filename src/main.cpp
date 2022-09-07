@@ -115,19 +115,18 @@ static realm_property_type_e property_type_from_string(const char* propstring) {
 }
 
 static int l_realm_open(lua_State* L) {
-    // Drop everything other than the first argument
-    lua_settop(L, 1);
-    luaL_checktype(L, 1, LUA_TTABLE);
+    luaL_checktype(L, -1, LUA_TTABLE);
 
-    size_t classes_len = lua_rawlen(L, 1);
+    size_t classes_len = lua_rawlen(L, -1);
     
     // Array of classes and a two-dimensional
     // array of properties for every class.
     realm_class_info_t classes[classes_len];
     const realm_property_info_t* properties[classes_len];;
 
+    int argument_index = lua_gettop(L);
     for (size_t i = 1; i <= classes_len; i++) {
-        lua_rawgeti(L, 1, i);
+        lua_rawgeti(L, argument_index, i);
 
         // Use name field to create initial class info
         lua_getfield(L, -1, "name");

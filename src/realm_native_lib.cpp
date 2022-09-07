@@ -64,12 +64,16 @@ static realm_schema_t* _parse_schema(lua_State* L) {
             });
             lua_pop(L, 2);
         }
-
+        // Drop the properties field.
+        lua_pop(L, 1);
+ 
         // Add the parsed class and property information to the array.
         class_Info.num_properties = class_properties.size();        
         properties[i-1] = class_properties.data();
         classes[i-1] = class_Info;
     }
+    // Pop the last class index.
+    lua_pop(L, 1);
 
     return realm_schema_new(classes, classes_len, properties);
 }
@@ -78,7 +82,6 @@ static int _lib_realm_open(lua_State* L) {
     realm_t** realm = static_cast<realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));
     luaL_setmetatable(L, RealmReleaseMetatableName);
     
-    lua_settop(L, 1);
     luaL_checktype(L, 1, LUA_TTABLE);
 
     realm_error_t error;
@@ -106,6 +109,7 @@ static int _lib_realm_open(lua_State* L) {
     // TODO?: add ability to change this through config object? 
     realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_SOFT_RESET_FILE); // delete realm file if there are schema conflicts
 
+    // Pop both fields.
     lua_pop(L, 2);
 
     *realm = realm_open(config);
@@ -116,6 +120,7 @@ static int _lib_realm_open(lua_State* L) {
         return 1;
     }
 
+    // lua_pushlightuserdata(L, realm);
     return 1;
 }
 

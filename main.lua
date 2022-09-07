@@ -17,6 +17,9 @@ local realm = Realm.open({
         }
     }
 })
+
+print(realm._handle, "\n")
+
 local p = realm:write(function()
     return realm:create("Person", { name = "Mads", age = 10 })
 end)

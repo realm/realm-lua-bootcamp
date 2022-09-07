@@ -1,7 +1,3 @@
-print("Hello, world!")
-
-print(my_custom_sum(1, 2, 3))
-
 local Realm = require "realm"
 
 ---@class Person

@@ -143,7 +143,6 @@ static int l_realm_open(lua_State* L) {
         std::vector<realm_property_info_t> class_properties = {};
     
         lua_pushnil(L);
-        int j = 0;
         // Iterate through key-values of a specific class' properties table.
         while(lua_next(L, -2) != 0) {
             lua_pushvalue(L, -2);
@@ -161,7 +160,6 @@ static int l_realm_open(lua_State* L) {
                 .link_target = "",
                 .link_origin_property_name = "",
             });
-            j++;
             lua_pop(L, 2);
         }
         // Add the parsed class and property information to the array.

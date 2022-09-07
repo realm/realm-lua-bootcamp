@@ -120,7 +120,6 @@ static int _lib_realm_open(lua_State* L) {
         return 1;
     }
 
-    // lua_pushlightuserdata(L, realm);
     return 1;
 }
 

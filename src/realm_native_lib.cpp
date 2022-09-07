@@ -19,7 +19,11 @@ static realm_schema_t* _parse_schema(lua_State* L) {
     // Array of classes and a two-dimensional
     // array of properties for every class.
     realm_class_info_t classes[classes_len];
-    const realm_property_info_t* properties[classes_len];;
+    const realm_property_info_t* properties[classes_len];
+
+    // 2D vector of class properties to act as a memory buffer
+    // for the actual properties array.
+    std::vector<std::vector<realm_property_info_t>> properties_vector = {};
 
     int argument_index = lua_gettop(L);
     for (size_t i = 1; i <= classes_len; i++) {
@@ -38,10 +42,9 @@ static realm_schema_t* _parse_schema(lua_State* L) {
         lua_getfield(L, -1, "properties");
         luaL_checktype(L, -1, LUA_TTABLE);
 
-        std::vector<realm_property_info_t> class_properties = {};
-    
         // Iterate through key-values of a specific class' properties table.
         // (Push nil since lua_next starts by popping.)
+        std::vector<realm_property_info_t> class_properties = {};
         lua_pushnil(L);
         while(lua_next(L, -2) != 0) {
             // Copy the key.
@@ -66,6 +69,8 @@ static realm_schema_t* _parse_schema(lua_State* L) {
         }
         // Drop the properties field.
         lua_pop(L, 1);
+
+        properties_vector.push_back(class_properties);
  
         // Add the parsed class and property information to the array.
         class_Info.num_properties = class_properties.size();        

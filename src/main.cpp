@@ -4,6 +4,8 @@
 #include <realm.h>
 #include <lua.hpp>
 
+#include "realm_native_lib.hpp"
+
 static void realm_first_steps() {
     realm_property_info_t person_name {
         .name = "name",
@@ -122,12 +124,19 @@ int main(int argc, char** argv) {
 
     // Load built-in libraries in the VM instance
     luaL_openlibs(L);
+    realm_lib_open(L);
 
     // Push native function to the stack, and expose it as a global
     lua_pushcfunction(L, &my_native_lua_sum);
     lua_setglobal(L, "my_custom_sum");
 
     int status;
+
+    status = luaL_dostring(L, "package.path = package.path .. ';" SCRIPT_SOURCE_PATH "/lib/?/init.lua'");
+    if (status) {
+        std::cerr << "Error setting up package search path: " << lua_tostring(L, -1) << std::endl;
+        return 1;
+    }
 
     // Load script file and push it onto the stack
     status = luaL_loadfile(L, SCRIPT_SOURCE_PATH"/main.lua");

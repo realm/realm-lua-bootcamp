@@ -1,6 +1,5 @@
 #include <iostream>
 #include <filesystem>
-#include <vector>
 
 #include <realm.h>
 #include <lua.hpp>

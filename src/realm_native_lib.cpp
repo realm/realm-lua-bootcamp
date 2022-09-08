@@ -1,3 +1,6 @@
+#include <vector>
+#include <iostream>
+
 #include "realm_native_lib.hpp"
 #include <realm.h>
 
@@ -19,8 +22,9 @@ static realm_schema_t* _parse_schema(lua_State* L) {
     // Array of classes and a two-dimensional
     // array of properties for every class.
     realm_class_info_t classes[classes_len];
+    memset(classes, 0, sizeof(realm_class_info_t)*classes_len);
+    
     const realm_property_info_t* properties[classes_len];
-
     // 2D vector of class properties to act as a memory buffer
     // for the actual properties array.
     std::vector<std::vector<realm_property_info_t>> properties_vector = {};
@@ -67,9 +71,7 @@ static realm_schema_t* _parse_schema(lua_State* L) {
         }
         // Drop the properties field.
         lua_pop(L, 1);
-
-        properties_vector.push_back(class_properties);
- 
+         
         // Add the parsed class and property information to the array.
         class_info.num_properties = class_properties.size();        
         properties[i-1] = class_properties.data();
@@ -116,7 +118,7 @@ static int _lib_realm_open(lua_State* L) {
 
     *realm = realm_open(config);
     realm_release(config);
-    if (!realm) {
+    if (!*realm) {
         realm_get_last_error(&error);
         // TODO: print error
         return 1;

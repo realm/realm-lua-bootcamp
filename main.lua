@@ -1,7 +1,3 @@
-print("Hello, world!")
-
-print(my_custom_sum(1, 2, 3))
-
 local Realm = require "realm"
 
 ---@class Person
@@ -21,6 +17,9 @@ local realm = Realm.open({
         }
     }
 })
+
+print(realm._handle, "\n")
+
 local p = realm:write(function()
     return realm:create("Person", { name = "Mads", age = 10 })
 end)

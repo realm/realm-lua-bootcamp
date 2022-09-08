@@ -103,21 +103,6 @@ static void realm_first_steps() {
     realm_release(realm);
 }
 
-static int my_native_lua_sum(lua_State* L) {
-    int number_of_arguments = lua_gettop(L);
-    
-    int64_t sum = 0;
-    for (int arg = 1; arg <= number_of_arguments; arg++) {
-        if (!lua_isnumber(L, arg)) {
-            return luaL_error(L, "Argument number %d is not of type number!", arg);
-        }
-        sum += lua_tonumber(L, arg);
-    }
-
-    lua_pushinteger(L, sum);
-    return 1; // number of returned values;
-}
-
 int main(int argc, char** argv) {
     // Create a new instance of the Lua VM state object
     lua_State* L = luaL_newstate();
@@ -125,10 +110,6 @@ int main(int argc, char** argv) {
     // Load built-in libraries in the VM instance
     luaL_openlibs(L);
     realm_lib_open(L);
-
-    // Push native function to the stack, and expose it as a global
-    lua_pushcfunction(L, &my_native_lua_sum);
-    lua_setglobal(L, "my_custom_sum");
 
     int status;
 

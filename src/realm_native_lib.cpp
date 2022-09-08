@@ -42,7 +42,7 @@ static realm_schema_t* _parse_schema(lua_State* L) {
 
         // Iterate through key-values of a specific class' properties table.
         // (Push nil since lua_next starts by popping.)
-        std::vector<realm_property_info_t> class_properties = {};
+        std::vector<realm_property_info_t>& class_properties = *properties_vector.emplace({});
         lua_pushnil(L);
         while(lua_next(L, -2) != 0) {
             // Copy the key.

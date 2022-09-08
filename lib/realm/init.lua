@@ -4,6 +4,10 @@ local native = require "_realm_native"
 local Realm = {}
 Realm.__index = Realm
 
+---@class Realm.Object
+---@field classkey
+local Realm_Object = {}
+
 ---@module '.schema'
 
 ---@class Realm.Config
@@ -19,14 +23,35 @@ function Realm.open(config)
     return self
 end
 
+local RealmObject = {
+    __index = function(mytable, key)
+        return native.realm_get_value(mytable._realm._handle, mytable._handle, key)
+    end,
+    __newindex = function(mytable, key, value)
+        native.realm_set_value(mytable._realm._handle, mytable._handle, key, value)
+    end
+}
+
+function Realm:create(class_name)
+    -- local class_key = native.realm_find_class(class_name)
+    local object = {
+        _handle = native.realm_object_create(self._handle, class_name),
+        _realm = self
+    }
+    object = setmetatable(object, RealmObject)
+    return object
+end
+
 function Realm:begin_transaction()
-    native.realm_begin_write(self)
+    native.realm_begin_write(self._handle)
 end
 
 function Realm:commit_transaction()
+    native.realm_commit_transaction(self._handle)
 end
 
 function Realm:cancel_transaction()
+    native.realm_cancel_transaction(self._handle)
 end
 
 ---@generic T
@@ -48,8 +73,5 @@ end
 ---@param class `T`
 ---@param values? T
 ---@return T
-function Realm:create(class, values)
-    return values
-end
 
 return Realm

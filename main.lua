@@ -18,9 +18,13 @@ local realm = Realm.open({
     }
 })
 
-print(realm._handle, "\n")
 
-local p = realm:write(function()
-    return realm:create("Person", { name = "Mads", age = 10 })
+local test_person
+realm:write(function()
+    test_person = realm:create("Person")
+    test_person.name = "Jacob"
+    test_person.age = 1337
+    return 0
 end)
-print(p.name)
+print(test_person["name"])
+print(test_person["age"])

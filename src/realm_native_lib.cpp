@@ -31,11 +31,9 @@ static realm_schema_t* _parse_schema(lua_State* L) {
 
         // Use name field to create initial class info
         lua_getfield(L, -1, "name");
-        realm_class_info_t class_Info{
-            .name = lua_tostring(L, -1),
-            .primary_key = "",
-            .num_properties = 0,
-        };
+        realm_class_info_t& class_info = classes[i-1];
+        class_info.name = lua_tostring(L, -1);
+        class_info.primary_key = "";
         lua_pop(L, 1);
 
         // Get properties and iterate through them

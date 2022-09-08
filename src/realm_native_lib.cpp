@@ -129,35 +129,38 @@ static int _lib_realm_open(lua_State* L) {
 
 static int _lib_realm_release(lua_State* L) {
     luaL_checkudata(L, 1, RealmHandle);
-    void** value = static_cast<void**>(lua_touserdata(L, -1));
-    realm_release(*value);
+    realm_t** realm = static_cast<realm_t**>(lua_touserdata(L, -1));
+    realm_release(*realm);
     return 0;
 }
 
 static int _lib_realm_begin_write(lua_State* L) {
+    luaL_checkudata(L, 1, RealmHandle);
     realm_t **realm = (realm_t **)lua_touserdata(L, -1);
     bool status = realm_begin_write(*realm);
-
-    // TODO: check status
-
-    std::cout << "Beginning write.." << std::endl;  // TODO: REMOVE
-    std::cout << status;
+    if (!status){
+        std::cerr << "Unable to start transaction" << std::endl;
+    }
     return 0;
 }
 
 static int _lib_realm_commit_transaction(lua_State* L) {
+    luaL_checkudata(L, 1, RealmHandle);
     realm_t **realm = (realm_t **)lua_touserdata(L, -1);
     bool status = realm_commit(*realm);
-
-    std::cout << "Committing.." << std::endl;  // TODO: REMOVE
-    std::cout << status;
+    if (!status){
+        std::cerr << "Unable to commit transaction" << std::endl;
+    }
     return 0;
 }
 
 static int _lib_realm_cancel_transaction(lua_State* L) {
+    luaL_checkudata(L, 1, RealmHandle);
     realm_t **realm = (realm_t **)lua_touserdata(L, -1);
     bool status = realm_rollback(*realm);
-    std::cout << status;
+    if (!status){
+        std::cerr << "Unable to rollback transaction" << std::endl;
+    }
     return 0;
 }
 
@@ -165,28 +168,24 @@ static int _lib_realm_object_create(lua_State* L) {
     realm_object_t** realm_object = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
     luaL_setmetatable(L, RealmHandle);
     realm_error_t error;
-    std::cout << lua_gettop(L) << std::endl;
     realm_t **realm = (realm_t **)lua_touserdata(L, 1);
-    std::cout << lua_gettop(L) << std::endl;
     const char *class_name = lua_tostring(L, 2);
     realm_class_info_t class_info;
     bool found = false;
     
     if (!realm_find_class(*realm, class_name, &found, &class_info)) {
-        std::cout << "did not find class.." << std::endl;  // TODO: REMOVE
-        // TODO: print error
+        std::cerr << "did not find class" << std::endl;
         lua_pop(L, 1);
         return 0;
     }
-    std::cout << "Creating object.." << std::endl;  // TODO: REMOVE
-    *realm_object = realm_object_create(*realm, class_info.key); //TODO: insert actual key here
+
+    *realm_object = realm_object_create(*realm, class_info.key); 
     if (!*realm_object) {
-        std::cout << "could not create object.." << std::endl;  // TODO: REMOVE
-        // TODO: print error
+        std::cerr << "could not create object" << std::endl;
         lua_pop(L, 1);
         return 0;
     }
-    //push object to stack
+    //push created object to stack
     return 1;
 }
 
@@ -201,7 +200,6 @@ static int _lib_realm_set_value(lua_State* L) {
 
     realm_value_t value;
     switch (lua_type(L,4))
-    // LUA_TNIL, LUA_TNUMBER, LUA_TBOOLEAN, LUA_TSTRING, LUA_TTABLE, LUA_TFUNCTION, LUA_TUSERDATA, LUA_TTHREAD, and LUA_TLIGHTUSERDATA
     {
     case LUA_TNUMBER:
         value.type = RLM_TYPE_INT;
@@ -221,6 +219,7 @@ static int _lib_realm_set_value(lua_State* L) {
 }
 
 static int _lib_realm_get_value(lua_State* L) {
+    // Fetch values from stack
     realm_t **realm = (realm_t **)lua_touserdata(L, 1);
     realm_object_t **realm_object = (realm_object_t **)lua_touserdata(L, 2);
     const char *property = lua_tostring(L, 3);
@@ -228,12 +227,16 @@ static int _lib_realm_get_value(lua_State* L) {
     realm_class_key_t class_key = realm_object_get_table(*realm_object);
     bool out_found = false;
     realm_find_property(*realm, class_key, property, &out_found, &property_info);
-    // RLM_API bool realm_get_value(const realm_object_t*, realm_property_key_t, realm_value_t* out_value);
+    if (!out_found){
+        std::cerr << "Unable to find property" << std::endl;
+    }
     realm_value_t out_value;
-    bool status;
-    status = realm_get_value(*realm_object, property_info.key, &out_value);
-    // check status
+    bool status = realm_get_value(*realm_object, property_info.key, &out_value);
+    if (!status) {
+        std::cerr << "Unable to get value" << std::endl; 
+    }
 
+    // Get type of fetched value
     switch (out_value.type)
     {
     case RLM_TYPE_INT:

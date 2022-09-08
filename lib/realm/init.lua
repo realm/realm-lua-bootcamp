@@ -29,7 +29,6 @@ local RealmObject = {
 }
 
 function Realm:create(class_name)
-    -- local class_key = native.realm_find_class(class_name)
     local object = {
         _handle = native.realm_object_create(self._handle, class_name),
         _realm = self

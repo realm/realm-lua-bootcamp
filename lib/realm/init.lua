@@ -4,10 +4,6 @@ local native = require "_realm_native"
 local Realm = {}
 Realm.__index = Realm
 
----@class Realm.Object
----@field classkey
-local Realm_Object = {}
-
 ---@module '.schema'
 
 ---@class Realm.Config

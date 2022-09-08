@@ -71,9 +71,8 @@ static realm_schema_t* _parse_schema(lua_State* L) {
         properties_vector.push_back(class_properties);
  
         // Add the parsed class and property information to the array.
-        class_Info.num_properties = class_properties.size();        
+        class_info.num_properties = class_properties.size();        
         properties[i-1] = class_properties.data();
-        classes[i-1] = class_Info;
     }
     // Pop the last class index.
     lua_pop(L, 1);

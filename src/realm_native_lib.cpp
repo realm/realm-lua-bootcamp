@@ -165,39 +165,49 @@ static int _lib_realm_cancel_transaction(lua_State* L) {
 }
 
 static int _lib_realm_object_create(lua_State* L) {
+    // Create RealmObject handle with its metatable to return to Lua 
     realm_object_t** realm_object = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
     luaL_setmetatable(L, RealmHandle);
-    realm_error_t error;
+
+    // Get arguments from stack
     realm_t **realm = (realm_t **)lua_touserdata(L, 1);
     const char *class_name = lua_tostring(L, 2);
+
+    // realm_error_t error; // TODO: Can we use this for error handling?
+    // Get class key corresponding to the object we create
     realm_class_info_t class_info;
     bool found = false;
-    
     if (!realm_find_class(*realm, class_name, &found, &class_info)) {
         std::cerr << "did not find class" << std::endl;
         lua_pop(L, 1);
         return 0;
     }
 
+    // Create object and feed it into the RealmObject handle
     *realm_object = realm_object_create(*realm, class_info.key); 
     if (!*realm_object) {
         std::cerr << "could not create object" << std::endl;
         lua_pop(L, 1);
         return 0;
     }
-    //push created object to stack
+
     return 1;
 }
 
 static int _lib_realm_set_value(lua_State* L) {
+
+    // Get arguments from stack
     realm_t **realm = (realm_t **)lua_touserdata(L, 1);
     realm_object_t **realm_object = (realm_object_t **)lua_touserdata(L, 2);
     const char *property = lua_tostring(L, 3);
+
+    // Get the property to update based on its string representation
     realm_property_info_t property_info;
     realm_class_key_t class_key = realm_object_get_table(*realm_object);
     bool out_found = false;
     realm_find_property(*realm, class_key, property, &out_found, &property_info);
 
+    // Translate the lua value into corresponding realm value
     realm_value_t value;
     switch (lua_type(L,4))
     {
@@ -217,17 +227,21 @@ static int _lib_realm_set_value(lua_State* L) {
     realm_error_t error;
     if (!realm_set_value(*realm_object, property_info.key, value, false)) {
         realm_get_last_error(&error);
-        // TODO: print error
+        std::cerr << "Unable to update value" << std::endl;
         return 0;
     }
+    
     return 0;
 }
 
 static int _lib_realm_get_value(lua_State* L) {
-    // Fetch values from stack
+
+    // Get arguments from stack
     realm_t **realm = (realm_t **)lua_touserdata(L, 1);
     realm_object_t **realm_object = (realm_object_t **)lua_touserdata(L, 2);
     const char *property = lua_tostring(L, 3);
+
+    // Get the property to fetch from based on its string representation
     realm_property_info_t property_info;
     realm_class_key_t class_key = realm_object_get_table(*realm_object);
     bool out_found = false;
@@ -235,13 +249,15 @@ static int _lib_realm_get_value(lua_State* L) {
     if (!out_found){
         std::cerr << "Unable to find property" << std::endl;
     }
+    
+    // Fetch desired value
     realm_value_t out_value;
-    bool status = realm_get_value(*realm_object, property_info.key, &out_value);
-    if (!status) {
+    if (!realm_get_value(*realm_object, property_info.key, &out_value)) {
         std::cerr << "Unable to get value" << std::endl; 
+        return 0;
     }
 
-    // Get type of fetched value
+    // Push correct lua value based on Realm type
     switch (out_value.type)
     {
     case RLM_TYPE_INT:

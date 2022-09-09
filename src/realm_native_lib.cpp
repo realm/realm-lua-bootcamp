@@ -206,18 +206,27 @@ static int _lib_realm_set_value(lua_State* L) {
 
     // Translate the lua value into corresponding realm value
     realm_value_t value;
-    switch (lua_type(L,4))
+    switch (property_info.type)
     {
-    case LUA_TNUMBER:
+    case RLM_PROPERTY_TYPE_INT:
         value.type = RLM_TYPE_INT;
-        value.integer = lua_tointeger(L, 4);
+        value.integer = lua_tonumber(L, 4);
         break;
-    case LUA_TSTRING:
+    case RLM_PROPERTY_TYPE_BOOL:
+        value.type = RLM_TYPE_BOOL;
+        value.boolean = lua_toboolean(L, 4);
+        break;
+    case RLM_PROPERTY_TYPE_STRING:
         value.type = RLM_TYPE_STRING;
         value.string.size = lua_rawlen(L, 4);
         value.string.data = lua_tostring(L, 4);
         break;
+    case RLM_PROPERTY_TYPE_DOUBLE:
+        value.type = RLM_TYPE_DOUBLE;
+        value.dnum = lua_tonumber(L, 4);
+        break;
     default:
+        std::cerr << "No valid type found" << std::endl;
         break;
     }
 

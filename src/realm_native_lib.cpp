@@ -165,27 +165,32 @@ static int _lib_realm_cancel_transaction(lua_State* L) {
 }
 
 static int _lib_realm_object_create(lua_State* L) {
+    // Create RealmObject handle with its metatable to return to Lua 
     realm_object_t** realm_object = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
     luaL_setmetatable(L, RealmHandle);
-    realm_error_t error;
+
+    // Get arguments from stack
     realm_t **realm = (realm_t **)lua_touserdata(L, 1);
     const char *class_name = lua_tostring(L, 2);
+
+    // realm_error_t error; // TODO: Can we use this for error handling?
+    // Get class key corresponding to the object we create
     realm_class_info_t class_info;
     bool found = false;
-    
     if (!realm_find_class(*realm, class_name, &found, &class_info)) {
         std::cerr << "did not find class" << std::endl;
         lua_pop(L, 1);
         return 0;
     }
 
+    // Create object and feed it into the RealmObject handle
     *realm_object = realm_object_create(*realm, class_info.key); 
     if (!*realm_object) {
         std::cerr << "could not create object" << std::endl;
         lua_pop(L, 1);
         return 0;
     }
-    //push created object to stack
+
     return 1;
 }
 

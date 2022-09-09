@@ -64,9 +64,4 @@ function Realm:write(writeCallback)
     end
 end
 
----@generic T
----@param class `T`
----@param values? T
----@return T
-
 return Realm

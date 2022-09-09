@@ -185,7 +185,12 @@ static int _lib_realm_object_create(lua_State* L) {
     realm_class_info_t class_info;
     bool found = false;
     if (!realm_find_class(*realm, class_name, &found, &class_info)) {
-        std::cerr << "did not find class" << std::endl;
+        std::cerr << "An exception occurred when trying to find a class" << std::endl;
+        lua_pop(L, 1);
+        return 0;
+    }
+    if (!found) {
+        std::cerr << "class not found" << std::endl;
         lua_pop(L, 1);
         return 0;
     }
@@ -209,8 +214,13 @@ static int _lib_realm_set_value(lua_State* L) {
     // Get the property to update based on its string representation
     realm_property_info_t property_info;
     realm_class_key_t class_key = realm_object_get_table(*realm_object);
-    bool out_found = false;
-    realm_find_property(*realm, class_key, property, &out_found, &property_info);
+    bool found = false;
+    if (!realm_find_property(*realm, class_key, property, &found, &property_info)) {
+        std::cerr << "An exception occurred when trying to find a property" << std::endl;
+    }
+    if (!found) {
+        std::cerr << "property not found" << std::endl;
+    }
 
     // Translate the lua value into corresponding realm value
     realm_value_t value;
@@ -256,9 +266,11 @@ static int _lib_realm_get_value(lua_State* L) {
     // Get the property to fetch from based on its string representation
     realm_property_info_t property_info;
     realm_class_key_t class_key = realm_object_get_table(*realm_object);
-    bool out_found = false;
-    realm_find_property(*realm, class_key, property, &out_found, &property_info);
-    if (!out_found){
+    bool found = false;
+    if (!realm_find_property(*realm, class_key, property, &found, &property_info)) {
+        std::cerr << "An exception occurred when trying to find a property" << std::endl;
+    }
+    if (!found){
         std::cerr << "Unable to find property" << std::endl;
     }
     

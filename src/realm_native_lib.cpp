@@ -16,6 +16,14 @@ static realm_property_type_e _parse_property_type(const char* propstring) {
     }
 }
 
+// Informs the user about the error through Lua API. 
+// Supports a format string in form "%1...%2..."
+template <typename... Args>
+static void _inform_error(lua_State* L, const char* format, Args&&... args) {
+    lua_pushstring(L, realm::util::format(format, args...).c_str());
+    lua_error(L);
+}
+
 static realm_schema_t* _parse_schema(lua_State* L) {
     size_t classes_len = lua_rawlen(L, -1);
     
@@ -120,7 +128,7 @@ static int _lib_realm_open(lua_State* L) {
     realm_release(config);
     if (!*realm) {
         realm_get_last_error(&error);
-        // TODO: print error
+        _inform_error(L, error.message);
         return 1;
     }
 

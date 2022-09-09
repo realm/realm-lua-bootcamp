@@ -6,22 +6,28 @@
 
 static const char* RealmHandle = "_realm_handle";
 
-static realm_property_type_e _parse_property_type(const char* propstring) {
-    if (strcmp(propstring, "int") == 0) return RLM_PROPERTY_TYPE_INT;
-    else if (strcmp(propstring, "string") == 0) return RLM_PROPERTY_TYPE_STRING;
-    else {
-        // TODO: all types
-        std::cerr << "Unknown type " << propstring << "\n";
-        return RLM_PROPERTY_TYPE_MIXED;
-    }
-}
-
 // Informs the user about the error through Lua API. 
 // Supports a format string in form "%1...%2..."
 template <typename... Args>
 static void _inform_error(lua_State* L, const char* format, Args&&... args) {
     lua_pushstring(L, realm::util::format(format, args...).c_str());
     lua_error(L);
+}
+
+static void _inform_realm_error(lua_State* L) {
+    realm_error_t error;
+    realm_get_last_error(&error);
+    _inform_error(L, error.message);
+}
+
+static std::optional<realm_property_type_e> _parse_property_type(lua_State* L, const char* propstring) {
+    if (strcmp(propstring, "int") == 0) return RLM_PROPERTY_TYPE_INT;
+    else if (strcmp(propstring, "string") == 0) return RLM_PROPERTY_TYPE_STRING;
+    else {
+        // TODO: all types
+        _inform_error(L, "Unknown type passed to schema");
+        return std::nullopt;
+    }
 }
 
 static realm_schema_t* _parse_schema(lua_State* L) {
@@ -63,19 +69,23 @@ static realm_schema_t* _parse_schema(lua_State* L) {
             luaL_checktype(L, -1, LUA_TSTRING);
             // The value.
             luaL_checktype(L, -2, LUA_TSTRING);
+            
+            if (auto type = _parse_property_type(L, lua_tostring(L, -2))){
+                class_properties.push_back(realm_property_info_t{
+                    // -1 is equivalent to the table key.
+                    .name = lua_tostring(L, -1),
+                    // TODO?: add support for this
+                    .public_name = "",
+                    // -2 is equivalent to the table value
+                    .type = *type,
 
-            class_properties.push_back(realm_property_info_t{
-                // -1 is equivalent to the table key.
-                .name = lua_tostring(L, -1),
-                // TODO?: add support for this
-                .public_name = "",
-                // -2 is equivalent to the table value
-                .type = _parse_property_type(lua_tostring(L, -2)),
-
-                .link_target = "",
-                .link_origin_property_name = "",
-            });
-            lua_pop(L, 2);
+                    .link_target = "",
+                    .link_origin_property_name = "",
+                });
+                lua_pop(L, 2);
+            } else {
+                return nullptr;
+            }
         }
         // Drop the properties field.
         lua_pop(L, 1);
@@ -96,14 +106,12 @@ static int _lib_realm_open(lua_State* L) {
     
     luaL_checktype(L, 1, LUA_TTABLE);
 
-    realm_error_t error;
     
     lua_getfield(L, 1, "schema");
     realm_schema_t* schema = _parse_schema(L);
     if (!schema) {
-        realm_get_last_error(&error);
-        // TODO: print error
-        return 1;
+        _inform_realm_error(L);
+        return 0;
     }
     lua_pop(L, 1);
 
@@ -126,8 +134,8 @@ static int _lib_realm_open(lua_State* L) {
     *realm = realm_open(config);
     realm_release(config);
     if (!*realm) {
-        realm_get_last_error(&error);
-        _inform_error(L, error.message);
+        // Exception ocurred while trying to open realm
+        _inform_realm_error(L);
         return 1;
     }
 
@@ -146,7 +154,9 @@ static int _lib_realm_begin_write(lua_State* L) {
     realm_t **realm = (realm_t **)lua_touserdata(L, -1);
     bool status = realm_begin_write(*realm);
     if (!status){
-        std::cerr << "Unable to start transaction" << std::endl;
+        // Exception ocurred while trying to start a write transaction
+        _inform_realm_error(L);
+        return 0;
     }
     return 0;
 }
@@ -156,7 +166,9 @@ static int _lib_realm_commit_transaction(lua_State* L) {
     realm_t **realm = (realm_t **)lua_touserdata(L, -1);
     bool status = realm_commit(*realm);
     if (!status){
-        std::cerr << "Unable to commit transaction" << std::endl;
+        // Exception ocurred while trying to commit a write transaction
+        _inform_realm_error(L);
+        return 0;
     }
     return 0;
 }
@@ -166,7 +178,9 @@ static int _lib_realm_cancel_transaction(lua_State* L) {
     realm_t **realm = (realm_t **)lua_touserdata(L, -1);
     bool status = realm_rollback(*realm);
     if (!status){
-        std::cerr << "Unable to rollback transaction" << std::endl;
+        // Exception ocurred while trying to cancel a write transaction
+        _inform_realm_error(L);
+        return 0;
     }
     return 0;
 }
@@ -180,17 +194,17 @@ static int _lib_realm_object_create(lua_State* L) {
     realm_t **realm = (realm_t **)lua_touserdata(L, 1);
     const char *class_name = lua_tostring(L, 2);
 
-    // realm_error_t error; // TODO: Can we use this for error handling?
     // Get class key corresponding to the object we create
     realm_class_info_t class_info;
     bool found = false;
     if (!realm_find_class(*realm, class_name, &found, &class_info)) {
-        std::cerr << "An exception occurred when trying to find a class" << std::endl;
+        // Exception occurred when fetching a class
+        _inform_realm_error(L);
         lua_pop(L, 1);
         return 0;
     }
     if (!found) {
-        std::cerr << "class not found" << std::endl;
+        _inform_error(L, "Class %1 not found", class_name);
         lua_pop(L, 1);
         return 0;
     }
@@ -198,7 +212,8 @@ static int _lib_realm_object_create(lua_State* L) {
     // Create object and feed it into the RealmObject handle
     *realm_object = realm_object_create(*realm, class_info.key); 
     if (!*realm_object) {
-        std::cerr << "could not create object" << std::endl;
+        // Exception ocurred when creating an object
+        _inform_realm_error(L);
         lua_pop(L, 1);
         return 0;
     }
@@ -216,10 +231,13 @@ static int _lib_realm_set_value(lua_State* L) {
     realm_class_key_t class_key = realm_object_get_table(*realm_object);
     bool found = false;
     if (!realm_find_property(*realm, class_key, property, &found, &property_info)) {
-        std::cerr << "An exception occurred when trying to find a property" << std::endl;
+        // Exception ocurred when fetching the property 
+        _inform_realm_error(L);
+        return 0;
     }
     if (!found) {
-        std::cerr << "property not found" << std::endl;
+        _inform_error(L, "Property %1 not found", property);
+        return 0;
     }
 
     // Translate the lua value into corresponding realm value
@@ -244,14 +262,13 @@ static int _lib_realm_set_value(lua_State* L) {
         value.dnum = lua_tonumber(L, 4);
         break;
     default:
-        std::cerr << "No valid type found" << std::endl;
-        break;
+        _inform_error(L, "No valid type found");
+        return 0;
     }
 
-    realm_error_t error;
     if (!realm_set_value(*realm_object, property_info.key, value, false)) {
-        realm_get_last_error(&error);
-        std::cerr << "Unable to update value" << std::endl;
+        // Exception ocurred when setting value
+        _inform_realm_error(L);
         return 0;
     }
     return 0;
@@ -268,16 +285,20 @@ static int _lib_realm_get_value(lua_State* L) {
     realm_class_key_t class_key = realm_object_get_table(*realm_object);
     bool found = false;
     if (!realm_find_property(*realm, class_key, property, &found, &property_info)) {
-        std::cerr << "An exception occurred when trying to find a property" << std::endl;
+        // Exception ocurred when fetching the property 
+        _inform_realm_error(L);
+        return 0;
     }
     if (!found){
-        std::cerr << "Unable to find property" << std::endl;
+        _inform_error(L, "Unable to fetch value from property %1", property);
+        return 0;
     }
     
     // Fetch desired value
     realm_value_t out_value;
     if (!realm_get_value(*realm_object, property_info.key, &out_value)) {
-        std::cerr << "Unable to get value" << std::endl; 
+        // Exception ocurred while trying to fetch value
+        _inform_realm_error(L);
         return 0;
     }
 
@@ -303,7 +324,7 @@ static int _lib_realm_get_value(lua_State* L) {
         lua_pushnumber(L, out_value.dnum);
         break;
     default:
-        std::cout << "Unknown type\n" << std::endl;
+        _inform_error(L, "Uknown type");
         return 0;
     }
     return 1;

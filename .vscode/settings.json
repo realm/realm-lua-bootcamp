@@ -1,0 +1,15 @@
+{
+    "lua.debug.settings.path": "${workspaceFolder}/lib/?/init.lua",
+    "cmake.configureOnOpen": true,
+    "cmake.statusbar.advanced": {
+        "kit": {
+            "visibility": "hidden"
+        },
+        "buildTarget": {
+            "visibility": "hidden"
+        },
+        "launchTarget": {
+            "visibility": "hidden"
+        }
+    }
+}

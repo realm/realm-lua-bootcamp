@@ -1,6 +1,6 @@
 #include <vector>
 #include <iostream>
-
+#include <realm/util/to_string.hpp>
 #include "realm_native_lib.hpp"
 #include <realm.h>
 

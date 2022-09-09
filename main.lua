@@ -5,7 +5,7 @@ local Realm = require "realm"
 ---@field age integer
 
 local realm = Realm.open({
-    path = os.getenv( "HOME" ) .. "/Documents/realm-lua-bootcamp/build/bootcamp.realm",
+    path = "./bootcamp.realm",
     schemaVersion = 0,
     schema = {
         {

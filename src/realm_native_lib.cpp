@@ -215,6 +215,10 @@ static int _lib_realm_set_value(lua_State* L) {
     }
 
     realm_set_value(*realm_object, property_info.key, value, false);
+    if (!realm_set_value(*realm_object, property_info.key, value, false)){
+        std::cerr << "Unable to update value" << std::endl;
+    }
+
     return 0;
 }
 

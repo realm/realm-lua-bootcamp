@@ -115,7 +115,6 @@ static int _lib_realm_open(lua_State* L) {
 
     // Pop both fields.
     lua_pop(L, 2);
-    
     *realm = realm_open(config);
     realm_release(config);
     if (!*realm) {
@@ -190,12 +189,10 @@ static int _lib_realm_object_create(lua_State* L) {
         lua_pop(L, 1);
         return 0;
     }
-
     return 1;
 }
 
 static int _lib_realm_set_value(lua_State* L) {
-
     // Get arguments from stack
     realm_t **realm = (realm_t **)lua_touserdata(L, 1);
     realm_object_t **realm_object = (realm_object_t **)lua_touserdata(L, 2);
@@ -230,12 +227,10 @@ static int _lib_realm_set_value(lua_State* L) {
         std::cerr << "Unable to update value" << std::endl;
         return 0;
     }
-    
     return 0;
 }
 
 static int _lib_realm_get_value(lua_State* L) {
-
     // Get arguments from stack
     realm_t **realm = (realm_t **)lua_touserdata(L, 1);
     realm_object_t **realm_object = (realm_object_t **)lua_touserdata(L, 2);
@@ -260,17 +255,28 @@ static int _lib_realm_get_value(lua_State* L) {
     // Push correct lua value based on Realm type
     switch (out_value.type)
     {
+    case RLM_TYPE_NULL:
+        lua_pushnil(L);
+        break;
     case RLM_TYPE_INT:
-        lua_pushnumber(L, out_value.integer);
+        lua_pushinteger(L, out_value.integer);
+        break;
+    case RLM_TYPE_BOOL:
+        lua_pushboolean(L, out_value.boolean);
         break;
     case RLM_TYPE_STRING:
         lua_pushstring(L, out_value.string.data);
         break;
+    case RLM_TYPE_FLOAT:
+        lua_pushnumber(L, out_value.fnum);
+        break;
+    case RLM_TYPE_DOUBLE:
+        lua_pushnumber(L, out_value.dnum);
+        break;
     default:
-        std::cout << "uknown type\n";
+        std::cout << "Unknown type\n" << std::endl;
         return 0;
     }
-
     return 1;
 }
 
@@ -283,14 +289,14 @@ static int _lib_realm_get_value(lua_State* L) {
 // }
 
 static const luaL_Reg lib[] = {
-  {"realm_open",        _lib_realm_open},
-  {"realm_release",     _lib_realm_release},
-  {"realm_begin_write", _lib_realm_begin_write},
-  {"realm_commit_transaction", _lib_realm_commit_transaction},
-  {"realm_cancel_transaction", _lib_realm_cancel_transaction},
-  {"realm_object_create",        _lib_realm_object_create},
-  {"realm_set_value",        _lib_realm_set_value},
-  {"realm_get_value",        _lib_realm_get_value},
+  {"realm_open",                _lib_realm_open},
+  {"realm_release",             _lib_realm_release},
+  {"realm_begin_write",         _lib_realm_begin_write},
+  {"realm_commit_transaction",  _lib_realm_commit_transaction},
+  {"realm_cancel_transaction",  _lib_realm_cancel_transaction},
+  {"realm_object_create",       _lib_realm_object_create},
+  {"realm_set_value",           _lib_realm_set_value},
+  {"realm_get_value",           _lib_realm_get_value},
   {NULL, NULL}
 };
 

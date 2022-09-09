@@ -238,6 +238,7 @@ static int _lib_realm_get_value(lua_State* L) {
     bool status = realm_get_value(*realm_object, property_info.key, &out_value);
     if (!status) {
         std::cerr << "Unable to get value" << std::endl; 
+        return 0;
     }
 
     // Get type of fetched value

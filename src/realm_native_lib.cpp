@@ -214,7 +214,12 @@ static int _lib_realm_set_value(lua_State* L) {
         break;
     }
 
-    realm_set_value(*realm_object, property_info.key, value, false);
+    realm_error_t error;
+    if (!realm_set_value(*realm_object, property_info.key, value, false)) {
+        realm_get_last_error(&error);
+        // TODO: print error
+        return 0;
+    }
     return 0;
 }
 

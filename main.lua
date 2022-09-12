@@ -29,6 +29,7 @@ end)
 print(test_person["name"])
 print(test_person["age"])
 
+
 local persons = realm:objects("Person")
 
 function on_persons_change(persons, changes)
@@ -47,6 +48,3 @@ if (#persons > 0) then
     -- Object listener
     -- persons[1].add_listener(on_person_change)
 end
-
--- TODO
--- Change to idiomatic Lua naming convention (camelCase)

@@ -78,6 +78,11 @@ function Realm.__gc(realm)
     realm:close()
 end
 
+-- TODO:
+-- Add RealmResultsBase
+-- Set it as RealmResults' metatable
+-- Add "filter" etc. as instance methods on RealmResults
+
 -- TODO: Add to RealmResults
 ---@class RealmResults
 ---@field add_listener function

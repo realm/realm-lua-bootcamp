@@ -7,9 +7,9 @@
 static const char* RealmHandle = "_realm_handle";
 
 // Checks whether given fullString ends with ending 
-bool endsWith (std::string_view const &fullString, std::string_view const &ending) {
-    if (fullString.length() >= ending.length()) {
-        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+bool ends_with (std::string_view const &full_string, std::string_view const &ending) {
+    if (full_string.length() >= ending.length()) {
+        return (0 == full_string.compare (full_string.length() - ending.length(), ending.length(), ending));
     } else {
         return false;
     }
@@ -29,22 +29,22 @@ static void _parse_property_type(lua_State* L, realm_property_info_t& prop, std:
     }
     prop.flags = RLM_PROPERTY_NORMAL;
     
-    if (endsWith(type, "[]")) {
+    if (ends_with(type, "[]")) {
         prop.collection_type = RLM_COLLECTION_TYPE_LIST;
         type = type.substr(0, type.size() - 2);
     }
 
-    if (endsWith(type, "<>")) {
+    if (ends_with(type, "<>")) {
         prop.collection_type = RLM_COLLECTION_TYPE_SET;
         type = type.substr(0, type.size() - 2);
     }
 
-    if (endsWith(type, "?")) {
+    if (ends_with(type, "?")) {
         prop.flags |= RLM_PROPERTY_NULLABLE;
         type = type.substr(0, type.size() - 1);
     }
 
-    if (endsWith(type, "{}")) {
+    if (ends_with(type, "{}")) {
         prop.collection_type = RLM_COLLECTION_TYPE_DICTIONARY;
         type = type.substr(0, type.size() - 2);
 

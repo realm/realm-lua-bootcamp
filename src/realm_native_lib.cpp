@@ -7,7 +7,7 @@
 static const char* RealmHandle = "_realm_handle";
 
 // Checks whether given fullString ends with ending 
-bool ends_with (std::string_view const &full_string, std::string_view const &ending) {
+bool ends_with (const std::string_view& full_string, const std::string_view& ending) {
     if (full_string.length() >= ending.length()) {
         return (0 == full_string.compare (full_string.length() - ending.length(), ending.length(), ending));
     } else {

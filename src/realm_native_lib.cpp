@@ -6,13 +6,12 @@
 
 static const char* RealmHandle = "_realm_handle";
 
-static realm_property_type_e _parse_property_type(const char* propstring) {
-    if (strcmp(propstring, "int") == 0) return RLM_PROPERTY_TYPE_INT;
-    else if (strcmp(propstring, "string") == 0) return RLM_PROPERTY_TYPE_STRING;
-    else {
-        // TODO: all types
-        std::cerr << "Unknown type " << propstring << "\n";
-        return RLM_PROPERTY_TYPE_MIXED;
+// Checks whether given fullString ends with ending 
+bool ends_with (const std::string_view& full_string, const std::string_view& ending) {
+    if (full_string.length() >= ending.length()) {
+        return (0 == full_string.compare (full_string.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
     }
 }
 
@@ -22,6 +21,77 @@ template <typename... Args>
 static void _inform_error(lua_State* L, const char* format, Args&&... args) {
     lua_pushstring(L, realm::util::format(format, args...).c_str());
     lua_error(L);
+}
+
+static void _parse_property_type(lua_State* L, realm_property_info_t& prop, std::string_view type) {
+    if (!type.size()) {
+        _inform_error(L, "");
+    }
+    prop.flags = RLM_PROPERTY_NORMAL;
+    
+    if (ends_with(type, "[]")) {
+        prop.collection_type = RLM_COLLECTION_TYPE_LIST;
+        type = type.substr(0, type.size() - 2);
+    }
+
+    if (ends_with(type, "<>")) {
+        prop.collection_type = RLM_COLLECTION_TYPE_SET;
+        type = type.substr(0, type.size() - 2);
+    }
+
+    if (ends_with(type, "?")) {
+        prop.flags |= RLM_PROPERTY_NULLABLE;
+        type = type.substr(0, type.size() - 1);
+    }
+
+    if (ends_with(type, "{}")) {
+        prop.collection_type = RLM_COLLECTION_TYPE_DICTIONARY;
+        type = type.substr(0, type.size() - 2);
+
+        if (type == "") {
+            prop.type = RLM_PROPERTY_TYPE_MIXED; 
+            prop.flags |= RLM_PROPERTY_NULLABLE;
+            return;
+        }
+    }
+
+    if (type == "bool") {
+        prop.type = RLM_PROPERTY_TYPE_BOOL;
+    }
+    else if (type == "mixed") {
+        prop.type = RLM_PROPERTY_TYPE_MIXED;
+    }
+    else if (type == "int") {
+        prop.type = RLM_PROPERTY_TYPE_INT;
+    }
+    else if (type == "float") {
+        prop.type = RLM_PROPERTY_TYPE_FLOAT;
+    }
+    else if (type == "double") {
+        prop.type = RLM_PROPERTY_TYPE_DOUBLE;
+    }
+    else if (type == "string") {
+        prop.type = RLM_PROPERTY_TYPE_STRING;
+    }
+    else if (type == "date") {
+        prop.type = RLM_PROPERTY_TYPE_TIMESTAMP;
+    }
+    else if (type == "data") {
+        prop.type = RLM_PROPERTY_TYPE_BINARY;
+    }
+    else if (type == "decimal128") {
+        prop.type = RLM_PROPERTY_TYPE_DECIMAL128;
+    }
+    else if (type == "objectId") {
+        prop.type = RLM_PROPERTY_TYPE_OBJECT_ID;
+    }
+    else if (type == "uuid") {
+        prop.type = RLM_PROPERTY_TYPE_UUID;
+    }
+    else {
+        std::cerr << "Unknown type " << type << "\n";
+        prop.type = RLM_PROPERTY_TYPE_MIXED;
+    }
 }
 
 static realm_schema_t* _parse_schema(lua_State* L) {
@@ -64,17 +134,14 @@ static realm_schema_t* _parse_schema(lua_State* L) {
             // The value.
             luaL_checktype(L, -2, LUA_TSTRING);
 
-            class_properties.push_back(realm_property_info_t{
-                // -1 is equivalent to the table key.
+            realm_property_info_t& property_info = class_properties.emplace_back(realm_property_info_t{
                 .name = lua_tostring(L, -1),
                 // TODO?: add support for this
                 .public_name = "",
-                // -2 is equivalent to the table value
-                .type = _parse_property_type(lua_tostring(L, -2)),
-
                 .link_target = "",
                 .link_origin_property_name = "",
             });
+            _parse_property_type(L, property_info, lua_tostring(L, -2));
             lua_pop(L, 2);
         }
         // Drop the properties field.
@@ -97,7 +164,7 @@ static int _lib_realm_open(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
 
     realm_error_t error;
-    
+
     lua_getfield(L, 1, "schema");
     realm_schema_t* schema = _parse_schema(L);
     if (!schema) {
@@ -123,6 +190,7 @@ static int _lib_realm_open(lua_State* L) {
 
     // Pop both fields.
     lua_pop(L, 2);
+    
     *realm = realm_open(config);
     realm_release(config);
     if (!*realm) {

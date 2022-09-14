@@ -33,6 +33,8 @@ function Realm:create(class_name)
     local object = {
         _handle = native.realm_object_create(self._handle, class_name),
         _realm = self
+        -- TODO (and here or onto a RealmBase):
+        -- add_listener = function, call native.realm_object_add_listener
     }
     table.insert(self._childHandles, object._handle)
     object = setmetatable(object, RealmObject)

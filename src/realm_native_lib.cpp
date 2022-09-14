@@ -2,9 +2,18 @@
 #include <iostream>
 #include <realm/util/to_string.hpp>
 #include "realm_native_lib.hpp"
-#include <realm.h>
 
 static const char* RealmHandle = "_realm_handle";
+
+struct realm_lua_userdata {
+    lua_State* L;
+    int callback_reference;
+};
+
+#define realm_userdata_t realm_lua_userdata*
+
+// Needs to be included after realm_userdata_t
+#include <realm.h>
 
 // Checks whether given fullString ends with ending 
 bool ends_with (const std::string_view& full_string, const std::string_view& ending) {
@@ -166,10 +175,7 @@ static realm_schema_t* _parse_schema(lua_State* L) {
 static int _lib_realm_open(lua_State* L) {
     realm_t** realm = static_cast<realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));
     luaL_setmetatable(L, RealmHandle);
-    
     luaL_checktype(L, 1, LUA_TTABLE);
-
-    
 
     lua_getfield(L, 1, "schema");
     realm_schema_t* schema = _parse_schema(L);
@@ -195,7 +201,7 @@ static int _lib_realm_open(lua_State* L) {
 
     // Pop both fields.
     lua_pop(L, 2);
-    
+
     *realm = realm_open(config);
     realm_release(config);
     if (!*realm) {
@@ -396,6 +402,127 @@ static int _lib_realm_get_value(lua_State* L) {
     return 1;
 }
 
+static int _lib_realm_object_get_all(lua_State* L) {
+    // Get arguments from stack
+    realm_t **realm = (realm_t**)lua_touserdata(L, 1);
+    const char* class_name = lua_tostring(L, 2);
+
+    // Get class info containing the class key
+    bool class_found = false;
+    realm_class_info_t class_info;
+    if (!realm_find_class(*realm, class_name, &class_found, &class_info)) {
+        _inform_realm_error(L);
+        return 0;
+
+        // NOTE:
+        // - there are two available functions in the C API: realm_find_class and realm_get_class
+    }
+
+    if (!class_found) {
+        _inform_error(L, "Unable to find collection");
+        return 0;
+    }
+
+    // Push result onto stack
+    realm_results_t **result = static_cast<realm_results_t**>(lua_newuserdata(L, sizeof(realm_results_t*)));
+    *result = realm_object_find_all(*realm, class_info.key);
+
+    return 1;
+}
+
+static int _lib_realm_results_get(lua_State* L) {
+    // Get arguments from stack
+    realm_results_t **realm_results = (realm_results_t **)lua_touserdata(L, 1);
+    int index = lua_tointeger(L, 2);
+    
+    // Setup return value which is a realm_object
+    realm_object_t **object = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
+
+    // Fetch object
+    *object = realm_results_get_object(*realm_results, index);
+
+    return 1;
+}
+
+static int _lib_realm_results_count(lua_State* L) {
+    // Get argument from stack
+    realm_results_t **realm_results = (realm_results_t**)lua_touserdata(L, 1);
+    size_t count;
+    realm_results_count(*realm_results, &count);
+    
+    // TODO: size_t: typedef unsigned long size_t. (Change from lua_pushinteger?)
+    lua_pushinteger(L, count);
+
+    return 1;
+}
+
+void on_collection_change(realm_lua_userdata* userdata, const realm_collection_changes_t* changes) {
+    lua_State* L = userdata->L;
+    int callback_reference = userdata->callback_reference;
+
+    // Put the Lua listener function on the top of the stack.
+    lua_rawgeti(L, LUA_REGISTRYINDEX, callback_reference);
+
+    // TODO: Go through the change set and build arguments.
+    // (Lua expects: 1st arg: collection, 2nd arg: changes)
+    lua_pushstring(L, "Hello");
+    lua_pushstring(L, "World");
+    int status = lua_pcall(L, 2, 0, 0);
+    if (status != LUA_OK) {
+        _inform_error(L, "Could not call the listener function.");
+        return;
+    }
+}
+
+void free_userdata(realm_lua_userdata* userdata) {
+    // Get the callback reference from the registry and unreference it
+    // so that Lua can garbage collect it.
+    luaL_unref(userdata->L, LUA_REGISTRYINDEX, userdata->callback_reference);
+    delete userdata;
+}
+
+static int _lib_realm_results_add_listener(lua_State* L) {
+    // Get 1st argument from stack
+    realm_results_t **results = (realm_results_t**)lua_touserdata(L, 1);
+    
+    // Pop 2nd argument (top of stack) from the stack and save a reference
+    // to it in the register. "callback_reference" is the register location.
+    int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    // Create arguments for realm_results_add_notification_callback
+    realm_lua_userdata* userdata = new realm_lua_userdata;
+    userdata->L = L;
+    userdata->callback_reference = callback_reference;
+
+    realm_notification_token_t *notification_token = realm_results_add_notification_callback(
+        *results,
+        userdata,
+        free_userdata,
+        nullptr,
+        on_collection_change
+    );
+
+    // TODO:
+    // Deal with notification_token
+
+    return 0;
+}
+
+// TODO
+static int _lib_realm_object_add_listener(lua_State* L) {
+
+    // realm.h
+    // RLM_API realm_notification_token_t* realm_object_add_notification_callback(
+    //     realm_object_t*,
+    //     realm_userdata_t userdata,
+    //     realm_free_userdata_func_t userdata_free,
+    //     realm_key_path_array_t*,
+    //     realm_on_object_change_func_t on_change
+    // );
+
+    return 0;
+}
+
 // static int _lib_realm_tostring(lua_State* L) {
 //     luaL_checkudata(L, 1, RealmHandle);
 //     void** value = static_cast<void**>(lua_touserdata(L, -1));
@@ -405,14 +532,19 @@ static int _lib_realm_get_value(lua_State* L) {
 // }
 
 static const luaL_Reg lib[] = {
-  {"realm_open",                _lib_realm_open},
-  {"realm_release",             _lib_realm_release},
-  {"realm_begin_write",         _lib_realm_begin_write},
-  {"realm_commit_transaction",  _lib_realm_commit_transaction},
-  {"realm_cancel_transaction",  _lib_realm_cancel_transaction},
-  {"realm_object_create",       _lib_realm_object_create},
-  {"realm_set_value",           _lib_realm_set_value},
-  {"realm_get_value",           _lib_realm_get_value},
+  {"realm_open",                    _lib_realm_open},
+  {"realm_release",                 _lib_realm_release},
+  {"realm_begin_write",             _lib_realm_begin_write},
+  {"realm_commit_transaction",      _lib_realm_commit_transaction},
+  {"realm_cancel_transaction",      _lib_realm_cancel_transaction},
+  {"realm_object_create",           _lib_realm_object_create},
+  {"realm_set_value",               _lib_realm_set_value},
+  {"realm_get_value",               _lib_realm_get_value},
+  {"realm_object_get_all",          _lib_realm_object_get_all},
+  {"realm_object_add_listener",     _lib_realm_object_add_listener},
+  {"realm_results_get",             _lib_realm_results_get},
+  {"realm_results_count",           _lib_realm_results_count},
+  {"realm_results_add_listener",    _lib_realm_results_add_listener},
   {NULL, NULL}
 };
 

@@ -29,4 +29,24 @@ end)
 print(test_person["name"])
 print(test_person["age"])
 
-realm:close()
+local persons = realm:objects("Person")
+
+function on_persons_change(persons, changes)
+    -- TODO: React to changes
+    print("Reacting to changes..")
+    print(persons, changes)
+end
+-- Collection listener
+persons.add_listener(on_persons_change)
+
+print("#persons:", #persons)
+if (#persons > 0) then
+    -- 1-based indexing
+    print("persons[1].name:", persons[1].name)
+
+    -- Object listener
+    -- persons[1].add_listener(on_person_change)
+end
+
+-- TODO
+-- Change to idiomatic Lua naming convention (camelCase)

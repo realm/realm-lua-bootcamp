@@ -78,4 +78,39 @@ function Realm.__gc(realm)
     realm:close()
 end
 
+-- TODO: Add to RealmResults
+---@class RealmResults
+---@field add_listener function
+local RealmResults = {
+    __index = function(mytable, key)
+        local object = {
+            _handle = native.realm_results_get(mytable._handle, key - 1),
+            _realm = mytable._realm
+        }
+        object = setmetatable(object, RealmObject)
+        return object
+    end,
+    __len = function(mytable)
+        return native.realm_results_count(mytable._handle)
+    end
+}
+
+---@param collection_name string
+---@return RealmResults
+function Realm:objects(collection_name)
+    local result_handle = native.realm_object_get_all(self._handle, collection_name)
+    local result = {
+        _handle = result_handle,
+        _realm = self,
+        -- NOTE: Preferably move following keys closer to/on RealmResults to prevent
+        --       duplicating this code in other functions that return RealmResults like
+        --       "filter", "sort", etc.
+        add_listener = function(on_collection_change)
+            native.realm_results_add_listener(result_handle, on_collection_change)
+        end
+    }
+    result = setmetatable(result, RealmResults)
+    return result
+end
+
 return Realm

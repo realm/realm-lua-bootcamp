@@ -38,7 +38,9 @@ function on_persons_change(persons, changes)
     print(persons, changes)
 end
 -- Collection listener
-persons.add_listener(on_persons_change)
+-- NOTE: Consume the return value in order to not be garbage collected
+local notification_token = persons.add_listener(on_persons_change)
+print(notification_token)
 
 print("#persons:", #persons)
 if (#persons > 0) then

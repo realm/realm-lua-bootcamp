@@ -113,7 +113,7 @@ function Realm:objects(collection_name)
         --       duplicating this code in other functions that return RealmResults like
         --       "filter", "sort", etc.
         add_listener = function(on_collection_change)
-            native.realm_results_add_listener(result_handle, on_collection_change)
+            return native.realm_results_add_listener(result_handle, on_collection_change)
         end
     }
     result = setmetatable(result, RealmResults)

@@ -27,15 +27,18 @@ bool ends_with (const std::string_view& full_string, const std::string_view& end
 // Informs the user about the error through Lua API. 
 // Supports a format string in form "%1...%2..."
 template <typename... Args>
-static void _inform_error(lua_State* L, const char* format, Args&&... args) {
+static int _inform_error(lua_State* L, const char* format, Args&&... args) {
     lua_pushstring(L, realm::util::format(format, args...).c_str());
-    lua_error(L);
+    return lua_error(L);
+
+    // TODO:
+    // Compare to luaL_error
 }
 
-static void _inform_realm_error(lua_State* L) {
+static int _inform_realm_error(lua_State* L) {
     realm_error_t error;
     realm_get_last_error(&error);
-    _inform_error(L, error.message);
+    return _inform_error(L, error.message);
 }
 
 static void _parse_property_type(lua_State* L, realm_property_info_t& prop, std::string_view type) {
@@ -489,12 +492,18 @@ static int _lib_realm_results_add_listener(lua_State* L) {
     // to it in the register. "callback_reference" is the register location.
     int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    // Create arguments for realm_results_add_notification_callback
+    // Create a pointer to userdata for use in the callback that
+    // will be invoked at a later time.
     realm_lua_userdata* userdata = new realm_lua_userdata;
     userdata->L = L;
     userdata->callback_reference = callback_reference;
 
-    realm_notification_token_t *notification_token = realm_results_add_notification_callback(
+    // TODO:
+    // Deal with notification_token
+
+    // Put the notification token on the stack.
+    auto** notification_token = static_cast<realm_notification_token_t**>(lua_newuserdata(L, sizeof(realm_notification_token_t*)));
+    *notification_token = realm_results_add_notification_callback(
         *results,
         userdata,
         free_userdata,
@@ -502,10 +511,16 @@ static int _lib_realm_results_add_listener(lua_State* L) {
         on_collection_change
     );
 
-    // TODO:
-    // Deal with notification_token
+    // Set the metatable of the notification token to that of RealmHandle
+    // in order for it to be released via __gc.
+    luaL_setmetatable(L, RealmHandle);
 
-    return 0;
+    if (!*notification_token) {
+        lua_pop(L, 1);
+        return _inform_realm_error(L);
+    }
+
+    return 1;
 }
 
 // TODO

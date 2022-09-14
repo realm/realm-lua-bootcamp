@@ -209,8 +209,9 @@ static int _lib_realm_open(lua_State* L) {
 
 static int _lib_realm_release(lua_State* L) {
     luaL_checkudata(L, 1, RealmHandle);
-    realm_t** realm = static_cast<realm_t**>(lua_touserdata(L, -1));
-    realm_release(*realm);
+    void** realm_handle = static_cast<void**>(lua_touserdata(L, -1));
+    realm_release(*realm_handle);
+    *realm_handle = nullptr;
     return 0;
 }
 

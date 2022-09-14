@@ -28,3 +28,5 @@ realm:write(function()
 end)
 print(test_person["name"])
 print(test_person["age"])
+
+realm:close()

@@ -4,3 +4,6 @@
 [submodule "external/realm-core"]
 	path = external/realm-core
 	url = https://github.com/realm/realm-core.git
+[submodule "external/libuv"]
+	path = external/libuv
+	url = https://github.com/libuv/libuv.git

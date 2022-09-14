@@ -14,7 +14,8 @@ Realm.__index = Realm
 ---@param config Realm.Config
 function Realm.open(config)
     local self = setmetatable({
-        _handle = native.realm_open(config)
+        _handle = native.realm_open(config),
+        _childHandles = setmetatable({}, { __mode = "v"}) -- a table of weak references
     }, Realm)
     return self
 end
@@ -33,6 +34,7 @@ function Realm:create(class_name)
         _handle = native.realm_object_create(self._handle, class_name),
         _realm = self
     }
+    table.insert(self._childHandles, object._handle)
     object = setmetatable(object, RealmObject)
     return object
 end
@@ -62,6 +64,18 @@ function Realm:write(writeCallback)
         self:cancel_transaction()
         error(result)
     end
+end
+
+---Explicitly close this realm, releasing its native resources
+function Realm:close()
+    for _, handle in ipairs(self._childHandles) do
+        native.realm_release(handle)
+    end
+    native.realm_release(self._handle)
+end
+
+function Realm.__gc(realm)
+    realm:close()
 end
 
 return Realm

@@ -59,7 +59,9 @@ int main(int argc, char** argv) {
         lua_path = existing_path;
         lua_path += ";";
     }
-    lua_path += SCRIPT_SOURCE_PATH "/lib/?/init.lua;;";
+    lua_path += SCRIPT_SOURCE_PATH "/lib/?/init.lua;";
+    lua_path += SCRIPT_SOURCE_PATH "/lib/?.lua;";
+    lua_path += ";";
     setenv("LUA_PATH", lua_path.c_str(), true);
 
     // Create a new instance of the Lua VM state object

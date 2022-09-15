@@ -183,8 +183,7 @@ static int _lib_realm_open(lua_State* L) {
     lua_getfield(L, 1, "schema");
     realm_schema_t* schema = _parse_schema(L);
     if (!schema) {
-        _inform_realm_error(L);
-        return 0;
+        return _inform_realm_error(L);
     }
     lua_pop(L, 1);
 
@@ -209,8 +208,7 @@ static int _lib_realm_open(lua_State* L) {
     realm_release(config);
     if (!*realm) {
         // Exception ocurred while trying to open realm
-        _inform_realm_error(L);
-        return 1;
+        return _inform_realm_error(L);
     }
 
     return 1;
@@ -230,8 +228,7 @@ static int _lib_realm_begin_write(lua_State* L) {
     bool status = realm_begin_write(*realm);
     if (!status){
         // Exception ocurred while trying to start a write transaction
-        _inform_realm_error(L);
-        return 0;
+        return _inform_realm_error(L);
     }
     return 0;
 }
@@ -242,8 +239,7 @@ static int _lib_realm_commit_transaction(lua_State* L) {
     bool status = realm_commit(*realm);
     if (!status){
         // Exception ocurred while trying to commit a write transaction
-        _inform_realm_error(L);
-        return 0;
+        return _inform_realm_error(L);
     }
     return 0;
 }
@@ -254,8 +250,7 @@ static int _lib_realm_cancel_transaction(lua_State* L) {
     bool status = realm_rollback(*realm);
     if (!status){
         // Exception ocurred while trying to cancel a write transaction
-        _inform_realm_error(L);
-        return 0;
+        return _inform_realm_error(L);
     }
     return 0;
 }
@@ -274,23 +269,17 @@ static int _lib_realm_object_create(lua_State* L) {
     bool found = false;
     if (!realm_find_class(*realm, class_name, &found, &class_info)) {
         // Exception occurred when fetching a class
-        _inform_realm_error(L);
-        lua_pop(L, 1);
-        return 0;
+        return _inform_realm_error(L);
     }
     if (!found) {
-        _inform_error(L, "Class %1 not found", class_name);
-        lua_pop(L, 1);
-        return 0;
+        return _inform_error(L, "Class %1 not found", class_name);
     }
 
     // Create object and feed it into the RealmObject handle
     *realm_object = realm_object_create(*realm, class_info.key); 
     if (!*realm_object) {
         // Exception ocurred when creating an object
-        _inform_realm_error(L);
-        lua_pop(L, 1);
-        return 0;
+        return _inform_realm_error(L);
     }
     return 1;
 }
@@ -307,12 +296,10 @@ static int _lib_realm_set_value(lua_State* L) {
     bool found = false;
     if (!realm_find_property(*realm, class_key, property, &found, &property_info)) {
         // Exception ocurred when fetching the property 
-        _inform_realm_error(L);
-        return 0;
+        return _inform_realm_error(L);
     }
     if (!found) {
-        _inform_error(L, "Property %1 not found", property);
-        return 0;
+        return _inform_error(L, "Property %1 not found", property);
     }
 
     // Translate the lua value into corresponding realm value
@@ -337,14 +324,12 @@ static int _lib_realm_set_value(lua_State* L) {
         value.dnum = lua_tonumber(L, 4);
         break;
     default:
-        _inform_error(L, "No valid type found");
-        return 0;
+        return _inform_error(L, "No valid type found");
     }
 
     if (!realm_set_value(*realm_object, property_info.key, value, false)) {
         // Exception ocurred when setting value
-        _inform_realm_error(L);
-        return 0;
+        return _inform_realm_error(L);
     }
     return 0;
 }
@@ -361,20 +346,17 @@ static int _lib_realm_get_value(lua_State* L) {
     bool found = false;
     if (!realm_find_property(*realm, class_key, property, &found, &property_info)) {
         // Exception ocurred when fetching the property 
-        _inform_realm_error(L);
-        return 0;
+        return _inform_realm_error(L);
     }
     if (!found){
-        _inform_error(L, "Unable to fetch value from property %1", property);
-        return 0;
+        return _inform_error(L, "Unable to fetch value from property %1", property);
     }
     
     // Fetch desired value
     realm_value_t out_value;
     if (!realm_get_value(*realm_object, property_info.key, &out_value)) {
         // Exception ocurred while trying to fetch value
-        _inform_realm_error(L);
-        return 0;
+        return _inform_realm_error(L);
     }
 
     // Push correct lua value based on Realm type
@@ -399,8 +381,7 @@ static int _lib_realm_get_value(lua_State* L) {
         lua_pushnumber(L, out_value.dnum);
         break;
     default:
-        _inform_error(L, "Uknown type");
-        return 0;
+        return _inform_error(L, "Uknown type");
     }
     return 1;
 }
@@ -414,16 +395,14 @@ static int _lib_realm_object_get_all(lua_State* L) {
     bool class_found = false;
     realm_class_info_t class_info;
     if (!realm_find_class(*realm, class_name, &class_found, &class_info)) {
-        _inform_realm_error(L);
-        return 0;
+        return _inform_realm_error(L);
 
         // NOTE:
         // - there are two available functions in the C API: realm_find_class and realm_get_class
     }
 
     if (!class_found) {
-        _inform_error(L, "Unable to find collection");
-        return 0;
+        return _inform_error(L, "Unable to find collection");
     }
 
     // Push result onto stack
@@ -453,8 +432,7 @@ static int _lib_realm_results_count(lua_State* L) {
     size_t count;
     bool status = realm_results_count(*realm_results, &count);
     if (!status) {
-        _inform_realm_error(L);
-        return 0;
+        return _inform_realm_error(L);
     };
     
     // TODO: size_t: typedef unsigned long size_t. (Change from lua_pushinteger?)

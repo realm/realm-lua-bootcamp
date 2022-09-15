@@ -6,8 +6,9 @@ local native = require "_realm_native"
 local Realm = {}
 Realm.__index = Realm
 
+local RealmObject = require "realm.object"
+
 ---@module '.schema'
----@module '.object'
 
 ---@class Realm.Config
 ---@field path string

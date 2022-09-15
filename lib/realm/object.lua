@@ -1,7 +1,7 @@
 local native = require "_realm_native"
 
 ---@class RealmObject
-RealmObject = {
+local RealmObject = {
     __index = function(mytable, key)
         return native.realm_get_value(mytable._realm._handle, mytable._handle, key)
     end,
@@ -9,3 +9,5 @@ RealmObject = {
         native.realm_set_value(mytable._realm._handle, mytable._handle, key, value)
     end
 }
+
+return RealmObject

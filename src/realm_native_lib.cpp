@@ -1,11 +1,19 @@
 #include <vector>
 #include <iostream>
 #include <realm/util/to_string.hpp>
-#include "realm_native_lib.hpp"
 
+#include "realm_native_lib.hpp"
+struct realm_lua_userdata {
+    lua_State* L;
+    int callback_reference;
+};
+
+#define realm_userdata_t realm_lua_userdata*
+
+#include <realm.h>
+#include "realm_native_lib.hpp"
 #include "realm_schema.hpp"
 #include "realm_util.hpp"
-#include "realm_native_lib.hpp"
 
 static int _lib_realm_open(lua_State* L) {
     realm_t** realm = static_cast<realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));

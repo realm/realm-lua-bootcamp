@@ -1,9 +1,9 @@
-Native = require "_realm_native"
+local native = require "_realm_native"
 
 ---@class Realm
 ---@field _handle userdata
 ---@field _childHandles userdata[]
-Realm = {}
+local Realm = {}
 Realm.__index = Realm
 
 ---@module '.schema'
@@ -17,22 +17,22 @@ Realm.__index = Realm
 ---@param config Realm.Config
 function Realm.open(config)
     local self = setmetatable({
-        _handle = Native.realm_open(config),
+        _handle = native.realm_open(config),
         _childHandles = setmetatable({}, { __mode = "v"}) -- a table of weak references
     }, Realm)
     return self
 end
 
 function Realm:begin_transaction()
-    Native.realm_begin_write(self._handle)
+    native.realm_begin_write(self._handle)
 end
 
 function Realm:commit_transaction()
-    Native.realm_commit_transaction(self._handle)
+    native.realm_commit_transaction(self._handle)
 end
 
 function Realm:cancel_transaction()
-    Native.realm_cancel_transaction(self._handle)
+    native.realm_cancel_transaction(self._handle)
 end
 
 ---@generic T
@@ -54,7 +54,7 @@ end
 ---@return RealmObject
 function Realm:create(class_name)
     local object = {
-        _handle = Native.realm_object_create(self._handle, class_name),
+        _handle = native.realm_object_create(self._handle, class_name),
         _realm = self
     }
     table.insert(self._childHandles, object._handle)
@@ -63,7 +63,7 @@ function Realm:create(class_name)
 end
 
 
----Explicitly close this realm, releasing its Native resources
+---Explicitly close this realm, releasing its native resources
 function Realm:close()
     for _, handle in ipairs(self._childHandles) do
         native.realm_release(handle)

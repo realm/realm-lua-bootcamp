@@ -1,10 +1,13 @@
-local native = require "_realm_native"
+Native = require "_realm_native"
 
 ---@class Realm
-local Realm = {}
+---@field _handle userdata
+---@field _childHandles userdata[]
+Realm = {}
 Realm.__index = Realm
 
 ---@module '.schema'
+---@module '.object'
 
 ---@class Realm.Config
 ---@field path string
@@ -14,43 +17,22 @@ Realm.__index = Realm
 ---@param config Realm.Config
 function Realm.open(config)
     local self = setmetatable({
-        _handle = native.realm_open(config),
+        _handle = Native.realm_open(config),
         _childHandles = setmetatable({}, { __mode = "v"}) -- a table of weak references
     }, Realm)
     return self
 end
 
-local RealmObject = {
-    __index = function(mytable, key)
-        return native.realm_get_value(mytable._realm._handle, mytable._handle, key)
-    end,
-    __newindex = function(mytable, key, value)
-        native.realm_set_value(mytable._realm._handle, mytable._handle, key, value)
-    end
-}
-
-function Realm:create(class_name)
-    local object = {
-        _handle = native.realm_object_create(self._handle, class_name),
-        _realm = self
-        -- TODO (and here or onto a RealmBase):
-        -- add_listener = function, call native.realm_object_add_listener
-    }
-    table.insert(self._childHandles, object._handle)
-    object = setmetatable(object, RealmObject)
-    return object
-end
-
 function Realm:begin_transaction()
-    native.realm_begin_write(self._handle)
+    Native.realm_begin_write(self._handle)
 end
 
 function Realm:commit_transaction()
-    native.realm_commit_transaction(self._handle)
+    Native.realm_commit_transaction(self._handle)
 end
 
 function Realm:cancel_transaction()
-    native.realm_cancel_transaction(self._handle)
+    Native.realm_cancel_transaction(self._handle)
 end
 
 ---@generic T
@@ -68,7 +50,20 @@ function Realm:write(writeCallback)
     end
 end
 
----Explicitly close this realm, releasing its native resources
+---@param class_name string
+---@return RealmObject
+function Realm:create(class_name)
+    local object = {
+        _handle = Native.realm_object_create(self._handle, class_name),
+        _realm = self
+    }
+    table.insert(self._childHandles, object._handle)
+    object = setmetatable(object, RealmObject)
+    return object
+end
+
+
+---Explicitly close this realm, releasing its Native resources
 function Realm:close()
     for _, handle in ipairs(self._childHandles) do
         native.realm_release(handle)

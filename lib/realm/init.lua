@@ -33,6 +33,8 @@ function Realm:create(class_name)
     local object = {
         _handle = native.realm_object_create(self._handle, class_name),
         _realm = self
+        -- TODO (and here or onto a RealmBase):
+        -- add_listener = function, call native.realm_object_add_listener
     }
     table.insert(self._childHandles, object._handle)
     object = setmetatable(object, RealmObject)
@@ -76,6 +78,51 @@ end
 
 function Realm.__gc(realm)
     realm:close()
+end
+
+-- TODO:
+-- Add RealmResultsBase
+-- Set it as RealmResults' metatable
+-- Add "filter" etc. as instance methods on RealmResults
+
+-- TODO: Add to RealmResults
+---@class RealmResults
+---@field add_listener function
+local RealmResults = {
+    __index = function(mytable, key)
+        local object = {
+            _handle = native.realm_results_get(mytable._handle, key - 1),
+            _realm = mytable._realm
+        }
+        object = setmetatable(object, RealmObject)
+        return object
+    end,
+    __len = function(mytable)
+        return native.realm_results_count(mytable._handle)
+    end
+}
+
+---@param className string
+---@return RealmResults
+function Realm:objects(className)
+    local result_handle = native.realm_object_get_all(self._handle, className)
+    return self:_createResults(result_handle, className)
+end
+
+function Realm:_createResults(handle, className)
+   local result = {
+        _handle = handle,
+        _realm = self,
+    }
+    function result:add_listener(on_collection_change)
+        return native.realm_results_add_listener(handle, on_collection_change)
+    end
+    function result:filter(query_string, ...)
+        local handle = native.realm_results_filter(self._handle, self._realm._handle, className, query_string, select('#', ...), ...)
+        return self._realm:_createResults(handle, className)
+    end
+    result = setmetatable(result, RealmResults)
+    return result
 end
 
 return Realm

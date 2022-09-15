@@ -39,7 +39,7 @@ function on_persons_change(persons, changes)
 end
 -- Collection listener
 -- NOTE: Consume the return value in order to not be garbage collected
-local notification_token = persons.add_listener(on_persons_change)
+local notification_token = persons:add_listener(on_persons_change)
 print(notification_token)
 
 print("#persons:", #persons)
@@ -50,3 +50,7 @@ if (#persons > 0) then
     -- Object listener
     -- persons[1].add_listener(on_person_change)
 end
+
+local filtered_persons = persons:filter("name = $0 and age = $1", "Jacob", 1337)
+print("len filter...")
+print(#filtered_persons)

@@ -520,6 +520,81 @@ static int _lib_realm_object_add_listener(lua_State* L) {
     return 0;
 }
 
+static realm_query_t* _lib_realm_query_parse(lua_State* L, realm_t *realm, const char* class_name, const char* query_string, size_t num_args, size_t lua_arg_offset) {
+    // Value which keeps track of the start location of arguments on the stack
+    size_t arg_index;
+
+    // Setup 2d vector to contain all realm_arguments provided
+    std::vector<realm_query_arg_t> args_vector;
+    std::vector<std::vector<realm_value_t>> value;
+    for(int index = 0; index < num_args; index++){
+        std::vector<realm_value_t>& realm_values = value.emplace_back();
+        arg_index = lua_arg_offset + index;
+        // TODO: add support for lists as input
+        if (lua_type(L, arg_index) == LUA_TNUMBER){
+            // Value is either of type double or int, need further investigation
+            if (lua_isinteger(L, arg_index)){
+                realm_values.emplace_back(realm_value_t{
+                    .type = RLM_TYPE_INT,
+                    .integer = lua_tointeger(L, arg_index),
+                });
+            } else {
+                realm_values.emplace_back(realm_value_t{
+                    .type = RLM_TYPE_DOUBLE,
+                    .dnum = lua_tonumber(L, arg_index),
+                });
+            }
+        } else if (lua_type(L, arg_index) == LUA_TSTRING){
+            realm_values.emplace_back(realm_value_t{
+                .type = RLM_TYPE_STRING,
+                .string.size = lua_rawlen(L, arg_index),
+                .string.data = lua_tostring(L, arg_index),
+            });
+        } else if (lua_type(L, arg_index) == LUA_TBOOLEAN){
+            realm_values.emplace_back(realm_value_t{
+                .type = RLM_TYPE_BOOL,
+                .boolean = static_cast<bool>(lua_toboolean(L, arg_index)),
+            });
+        }
+        args_vector.emplace_back(realm_query_arg_t{
+            .nb_args = 1,
+            .is_list = false,
+            .arg = realm_values.data(),
+        });
+    }
+    // set array value here from vector
+
+    // Get class key
+    bool class_found = false;
+    realm_class_info_t class_info;
+    if (!realm_find_class(realm, class_name, &class_found, &class_info)) {
+        _inform_realm_error(L);
+        return nullptr;
+    }
+    if (!class_found) {
+        _inform_error(L, "Unable to find collection");
+        return nullptr;
+    }
+
+    return realm_query_parse(realm, class_info.key, query_string, num_args, args_vector.data()); 
+}
+
+static int _lib_realm_results_filter(lua_State *L){
+    realm_results_t **unfiltered_result = (realm_results_t**)lua_touserdata(L, 1);
+    realm_t **realm = (realm_t**)lua_touserdata(L, 2);
+    const char* class_name = lua_tostring(L, 3);
+    const char* query_string = lua_tostring(L, 4);
+    size_t num_args = lua_tointeger(L, 5);
+    size_t lua_arg_offset = 6;
+    realm_query_t *query = _lib_realm_query_parse(L, *realm, class_name, query_string, num_args, lua_arg_offset);
+    if (!query){
+        return _inform_realm_error(L);
+    }
+    realm_results_t **result = static_cast<realm_results_t**>(lua_newuserdata(L, sizeof(realm_results_t*)));
+    *result = realm_results_filter(*unfiltered_result, query);
+    return 1;
+}
+
 // static int _lib_realm_tostring(lua_State* L) {
 //     luaL_checkudata(L, 1, RealmHandle);
 //     void** value = static_cast<void**>(lua_touserdata(L, -1));
@@ -542,6 +617,7 @@ static const luaL_Reg lib[] = {
   {"realm_results_get",             _lib_realm_results_get},
   {"realm_results_count",           _lib_realm_results_count},
   {"realm_results_add_listener",    _lib_realm_results_add_listener},
+  {"realm_results_filter",       _lib_realm_results_filter},
   {NULL, NULL}
 };
 

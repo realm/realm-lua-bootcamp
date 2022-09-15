@@ -102,20 +102,25 @@ local RealmResults = {
     end
 }
 
----@param collection_name string
+---@param className string
 ---@return RealmResults
-function Realm:objects(collection_name)
-    local result_handle = native.realm_object_get_all(self._handle, collection_name)
-    local result = {
-        _handle = result_handle,
+function Realm:objects(className)
+    local result_handle = native.realm_object_get_all(self._handle, className)
+    return self:_createResults(result_handle, className)
+end
+
+function Realm:_createResults(handle, className)
+   local result = {
+        _handle = handle,
         _realm = self,
-        -- NOTE: Preferably move following keys closer to/on RealmResults to prevent
-        --       duplicating this code in other functions that return RealmResults like
-        --       "filter", "sort", etc.
-        add_listener = function(on_collection_change)
-            return native.realm_results_add_listener(result_handle, on_collection_change)
-        end
     }
+    function result:add_listener(on_collection_change)
+        return native.realm_results_add_listener(handle, on_collection_change)
+    end
+    function result:filter(query_string, ...)
+        local handle = native.realm_results_filter(self._handle, self._realm._handle, className, query_string, select('#', ...), ...)
+        return self._realm:_createResults(handle, className)
+    end
     result = setmetatable(result, RealmResults)
     return result
 end

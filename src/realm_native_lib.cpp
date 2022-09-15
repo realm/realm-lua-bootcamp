@@ -451,7 +451,11 @@ static int _lib_realm_results_count(lua_State* L) {
     // Get argument from stack
     realm_results_t **realm_results = (realm_results_t**)lua_touserdata(L, 1);
     size_t count;
-    realm_results_count(*realm_results, &count);
+    bool status = realm_results_count(*realm_results, &count);
+    if (!status) {
+        _inform_realm_error(L);
+        return 0;
+    };
     
     // TODO: size_t: typedef unsigned long size_t. (Change from lua_pushinteger?)
     lua_pushinteger(L, count);
@@ -485,11 +489,11 @@ void free_userdata(realm_lua_userdata* userdata) {
 }
 
 static int _lib_realm_results_add_listener(lua_State* L) {
-    // Get 1st argument from stack
+    // Get 1st argument (results/collection) from stack
     realm_results_t **results = (realm_results_t**)lua_touserdata(L, 1);
     
-    // Pop 2nd argument (top of stack) from the stack and save a reference
-    // to it in the register. "callback_reference" is the register location.
+    // Pop 2nd argument/top of stack (the Lua function) from the stack and save a
+    // refernce to it in the register. "callback_reference" is the register location.
     int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
 
     // Create a pointer to userdata for use in the callback that

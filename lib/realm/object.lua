@@ -11,4 +11,4 @@ local RealmObject = {
     end
 }
 
-return RealmObject
+return RealmObject;

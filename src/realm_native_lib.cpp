@@ -16,8 +16,6 @@ struct realm_lua_userdata {
 #include "realm_util.hpp"
 
 static int _lib_realm_open(lua_State* L) {
-    realm_t** realm = static_cast<realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));
-    luaL_setmetatable(L, RealmHandle);
     luaL_checktype(L, 1, LUA_TTABLE);
 
     lua_getfield(L, 1, "schema");
@@ -43,14 +41,17 @@ static int _lib_realm_open(lua_State* L) {
 
     // Pop both fields.
     lua_pop(L, 2);
-
+    
+    const realm_t** realm = static_cast<const realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));
+    luaL_setmetatable(L, RealmHandle);
     *realm = realm_open(config);
     realm_release(config);
     if (!*realm) {
         // Exception ocurred while trying to open realm
         return _inform_realm_error(L);
     }
-    return 1;
+    _push_schema_info(L, *realm);
+    return 2;
 }
 
 static int _lib_realm_release(lua_State* L) {
@@ -101,21 +102,10 @@ static int _lib_realm_object_create(lua_State* L) {
 
     // Get arguments from stack
     realm_t** realm = (realm_t**)lua_touserdata(L, 1);
-    const char* class_name = lua_tostring(L, 2);
-
-    // Get class key corresponding to the object we create
-    realm_class_info_t class_info;
-    bool found = false;
-    if (!realm_find_class(*realm, class_name, &found, &class_info)) {
-        // Exception occurred when fetching a class
-        return _inform_realm_error(L);
-    }
-    if (!found) {
-        return _inform_error(L, "Class %1 not found", class_name);
-    }
+    const int class_key = lua_tointeger(L, 2);
 
     // Create object and feed it into the RealmObject handle
-    *realm_object = realm_object_create(*realm, class_info.key); 
+    *realm_object = realm_object_create(*realm, class_key); 
     if (!*realm_object) {
         // Exception ocurred when creating an object
         return _inform_realm_error(L);

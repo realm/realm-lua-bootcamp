@@ -2,6 +2,7 @@ local native = require "_realm_native"
 
 ---@class Realm
 ---@field _handle userdata
+---@field _schema table
 ---@field _childHandles userdata[]
 local Realm = {}
 Realm.__index = Realm
@@ -18,8 +19,10 @@ local RealmResults = require "realm.results"
 
 ---@param config Realm.Config
 function Realm.open(config)
+    local _handle, _schema = native.realm_open(config)
     local self = setmetatable({
-        _handle = native.realm_open(config),
+        _handle = _handle,
+        _schema = _schema,
         _childHandles = setmetatable({}, { __mode = "v"}) -- a table of weak references
     }, Realm)
     return self
@@ -61,7 +64,7 @@ end
 
 function Realm:_createObject(handle)
     local object = {
-        _handle = handle,
+        _handle = native.realm_object_create(self._handle, self._schema[class_name].class_key),
         _realm = self
     }
     function object:addListener(onObjectChange)

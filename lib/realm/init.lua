@@ -7,6 +7,7 @@ local Realm = {}
 Realm.__index = Realm
 
 local RealmObject = require "realm.object"
+local RealmResults = require "realm.results"
 
 ---@module '.schema'
 
@@ -63,7 +64,6 @@ function Realm:create(class_name)
     return object
 end
 
-
 ---Explicitly close this realm, releasing its native resources
 function Realm:close()
     for _, handle in ipairs(self._childHandles) do
@@ -75,28 +75,6 @@ end
 function Realm.__gc(realm)
     realm:close()
 end
-
--- TODO:
--- Add RealmResultsBase
--- Set it as RealmResults' metatable
--- Add "filter" etc. as instance methods on RealmResults
-
--- TODO: Add to RealmResults
----@class RealmResults
----@field add_listener function
-local RealmResults = {
-    __index = function(mytable, key)
-        local object = {
-            _handle = native.realm_results_get(mytable._handle, key - 1),
-            _realm = mytable._realm
-        }
-        object = setmetatable(object, RealmObject)
-        return object
-    end,
-    __len = function(mytable)
-        return native.realm_results_count(mytable._handle)
-    end
-}
 
 ---@param className string
 ---@return RealmResults

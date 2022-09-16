@@ -1,10 +1,8 @@
 #include <vector>
 #include <iostream>
 #include <realm/util/to_string.hpp>
+
 #include "realm_native_lib.hpp"
-
-static const char* RealmHandle = "_realm_handle";
-
 struct realm_lua_userdata {
     lua_State* L;
     int callback_reference;
@@ -12,168 +10,10 @@ struct realm_lua_userdata {
 
 #define realm_userdata_t realm_lua_userdata*
 
-// Needs to be included after realm_userdata_t
 #include <realm.h>
-
-// Checks whether given fullString ends with ending 
-bool ends_with (const std::string_view& full_string, const std::string_view& ending) {
-    if (full_string.length() >= ending.length()) {
-        return (0 == full_string.compare (full_string.length() - ending.length(), ending.length(), ending));
-    } else {
-        return false;
-    }
-}
-
-// Informs the user about the error through Lua API. 
-// Supports a format string in form "%1...%2..."
-template <typename... Args>
-static int _inform_error(lua_State* L, const char* format, Args&&... args) {
-    lua_pushstring(L, realm::util::format(format, args...).c_str());
-    return lua_error(L);
-
-    // TODO:
-    // Compare to luaL_error
-}
-
-static int _inform_realm_error(lua_State* L) {
-    realm_error_t error;
-    realm_get_last_error(&error);
-    return _inform_error(L, error.message);
-}
-
-static void _parse_property_type(lua_State* L, realm_property_info_t& prop, std::string_view type) {
-    if (!type.size()) {
-        _inform_error(L, "");
-    }
-    prop.flags = RLM_PROPERTY_NORMAL;
-    
-    if (ends_with(type, "[]")) {
-        prop.collection_type = RLM_COLLECTION_TYPE_LIST;
-        type = type.substr(0, type.size() - 2);
-    }
-
-    if (ends_with(type, "<>")) {
-        prop.collection_type = RLM_COLLECTION_TYPE_SET;
-        type = type.substr(0, type.size() - 2);
-    }
-
-    if (ends_with(type, "?")) {
-        prop.flags |= RLM_PROPERTY_NULLABLE;
-        type = type.substr(0, type.size() - 1);
-    }
-
-    if (ends_with(type, "{}")) {
-        prop.collection_type = RLM_COLLECTION_TYPE_DICTIONARY;
-        type = type.substr(0, type.size() - 2);
-
-        if (type == "") {
-            prop.type = RLM_PROPERTY_TYPE_MIXED; 
-            prop.flags |= RLM_PROPERTY_NULLABLE;
-            return;
-        }
-    }
-
-    if (type == "bool") {
-        prop.type = RLM_PROPERTY_TYPE_BOOL;
-    }
-    else if (type == "mixed") {
-        prop.type = RLM_PROPERTY_TYPE_MIXED;
-    }
-    else if (type == "int") {
-        prop.type = RLM_PROPERTY_TYPE_INT;
-    }
-    else if (type == "float") {
-        prop.type = RLM_PROPERTY_TYPE_FLOAT;
-    }
-    else if (type == "double") {
-        prop.type = RLM_PROPERTY_TYPE_DOUBLE;
-    }
-    else if (type == "string") {
-        prop.type = RLM_PROPERTY_TYPE_STRING;
-    }
-    else if (type == "date") {
-        prop.type = RLM_PROPERTY_TYPE_TIMESTAMP;
-    }
-    else if (type == "data") {
-        prop.type = RLM_PROPERTY_TYPE_BINARY;
-    }
-    else if (type == "decimal128") {
-        prop.type = RLM_PROPERTY_TYPE_DECIMAL128;
-    }
-    else if (type == "objectId") {
-        prop.type = RLM_PROPERTY_TYPE_OBJECT_ID;
-    }
-    else if (type == "uuid") {
-        prop.type = RLM_PROPERTY_TYPE_UUID;
-    }
-    else {
-        _inform_error(L, "Unknown type");
-        prop.type = RLM_PROPERTY_TYPE_MIXED;
-    }
-}
-
-static realm_schema_t* _parse_schema(lua_State* L) {
-    size_t classes_len = lua_rawlen(L, -1);
-    
-    // Array of classes and a two-dimensional
-    // array of properties for every class.
-    realm_class_info_t classes[classes_len];
-    memset(classes, 0, sizeof(realm_class_info_t)*classes_len);
-    
-    const realm_property_info_t* properties[classes_len];
-    // 2D vector of class properties to act as a memory buffer
-    // for the actual properties array.
-    std::vector<std::vector<realm_property_info_t>> properties_vector = {};
-
-    int argument_index = lua_gettop(L);
-    for (size_t i = 1; i <= classes_len; i++) {
-        lua_rawgeti(L, argument_index, i);
-
-        // Use name field to create initial class info
-        lua_getfield(L, -1, "name");
-        realm_class_info_t& class_info = classes[i-1];
-        class_info.name = lua_tostring(L, -1);
-        class_info.primary_key = "";
-        lua_pop(L, 1);
-
-        // Get properties and iterate through them
-        lua_getfield(L, -1, "properties");
-        luaL_checktype(L, -1, LUA_TTABLE);
-
-        // Iterate through key-values of a specific class' properties table.
-        // (Push nil since lua_next starts by popping.)
-        std::vector<realm_property_info_t>& class_properties = *properties_vector.emplace({});
-        lua_pushnil(L);
-        while(lua_next(L, -2) != 0) {
-            // Copy the key.
-            lua_pushvalue(L, -2);
-            // The copied key.
-            luaL_checktype(L, -1, LUA_TSTRING);
-            // The value.
-            luaL_checktype(L, -2, LUA_TSTRING);
-
-            realm_property_info_t& property_info = class_properties.emplace_back(realm_property_info_t{
-                .name = lua_tostring(L, -1),
-                // TODO?: add support for this
-                .public_name = "",
-                .link_target = "",
-                .link_origin_property_name = "",
-            });
-            _parse_property_type(L, property_info, lua_tostring(L, -2));
-            lua_pop(L, 2);
-        }
-        // Drop the properties field.
-        lua_pop(L, 1);
-         
-        // Add the parsed class and property information to the array.
-        class_info.num_properties = class_properties.size();        
-        properties[i-1] = class_properties.data();
-    }
-    // Pop the last class index.
-    lua_pop(L, 1);
-
-    return realm_schema_new(classes, classes_len, properties);
-}
+#include "realm_native_lib.hpp"
+#include "realm_schema.hpp"
+#include "realm_util.hpp"
 
 static int _lib_realm_open(lua_State* L) {
     realm_t** realm = static_cast<realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));
@@ -210,7 +50,6 @@ static int _lib_realm_open(lua_State* L) {
         // Exception ocurred while trying to open realm
         return _inform_realm_error(L);
     }
-
     return 1;
 }
 
@@ -224,7 +63,7 @@ static int _lib_realm_release(lua_State* L) {
 
 static int _lib_realm_begin_write(lua_State* L) {
     luaL_checkudata(L, 1, RealmHandle);
-    realm_t **realm = (realm_t **)lua_touserdata(L, -1);
+    realm_t** realm = (realm_t**)lua_touserdata(L, -1);
     bool status = realm_begin_write(*realm);
     if (!status){
         // Exception ocurred while trying to start a write transaction
@@ -235,7 +74,7 @@ static int _lib_realm_begin_write(lua_State* L) {
 
 static int _lib_realm_commit_transaction(lua_State* L) {
     luaL_checkudata(L, 1, RealmHandle);
-    realm_t **realm = (realm_t **)lua_touserdata(L, -1);
+    realm_t** realm = (realm_t**)lua_touserdata(L, -1);
     bool status = realm_commit(*realm);
     if (!status){
         // Exception ocurred while trying to commit a write transaction
@@ -246,7 +85,7 @@ static int _lib_realm_commit_transaction(lua_State* L) {
 
 static int _lib_realm_cancel_transaction(lua_State* L) {
     luaL_checkudata(L, 1, RealmHandle);
-    realm_t **realm = (realm_t **)lua_touserdata(L, -1);
+    realm_t** realm = (realm_t**)lua_touserdata(L, -1);
     bool status = realm_rollback(*realm);
     if (!status){
         // Exception ocurred while trying to cancel a write transaction
@@ -261,8 +100,8 @@ static int _lib_realm_object_create(lua_State* L) {
     luaL_setmetatable(L, RealmHandle);
 
     // Get arguments from stack
-    realm_t **realm = (realm_t **)lua_touserdata(L, 1);
-    const char *class_name = lua_tostring(L, 2);
+    realm_t** realm = (realm_t**)lua_touserdata(L, 1);
+    const char* class_name = lua_tostring(L, 2);
 
     // Get class key corresponding to the object we create
     realm_class_info_t class_info;
@@ -286,9 +125,9 @@ static int _lib_realm_object_create(lua_State* L) {
 
 static int _lib_realm_set_value(lua_State* L) {
     // Get arguments from stack
-    realm_t **realm = (realm_t **)lua_touserdata(L, 1);
-    realm_object_t **realm_object = (realm_object_t **)lua_touserdata(L, 2);
-    const char *property = lua_tostring(L, 3);
+    realm_t** realm = (realm_t**)lua_touserdata(L, 1);
+    realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 2);
+    const char* property = lua_tostring(L, 3);
 
     // Get the property to update based on its string representation
     realm_property_info_t property_info;
@@ -336,9 +175,9 @@ static int _lib_realm_set_value(lua_State* L) {
 
 static int _lib_realm_get_value(lua_State* L) {
     // Get arguments from stack
-    realm_t **realm = (realm_t **)lua_touserdata(L, 1);
-    realm_object_t **realm_object = (realm_object_t **)lua_touserdata(L, 2);
-    const char *property = lua_tostring(L, 3);
+    realm_t** realm = (realm_t**)lua_touserdata(L, 1);
+    realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 2);
+    const char* property = lua_tostring(L, 3);
 
     // Get the property to fetch from based on its string representation
     realm_property_info_t property_info;
@@ -595,14 +434,6 @@ static int _lib_realm_results_filter(lua_State *L){
     return 1;
 }
 
-// static int _lib_realm_tostring(lua_State* L) {
-//     luaL_checkudata(L, 1, RealmHandle);
-//     void** value = static_cast<void**>(lua_touserdata(L, -1));
-//     realm_release(*value);
-//     // RLM_API bool realm_get_value(const realm_object_t*, realm_property_key_t, realm_value_t* out_value);
-//     return 0;
-// }
-
 static const luaL_Reg lib[] = {
   {"realm_open",                    _lib_realm_open},
   {"realm_release",                 _lib_realm_release},
@@ -635,7 +466,4 @@ void realm_lib_open(lua_State* L) {
     lua_pushstring(L, "__gc");
     lua_pushcfunction(L, &_lib_realm_release);
     lua_settable(L, -3);
-    // lua_pushstring(L, "__tostring");
-    // lua_pushcfunction(L, &_lib_realm_tostring);
-    // lua_settable(L, -3);
 }

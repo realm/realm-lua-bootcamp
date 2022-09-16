@@ -2,6 +2,8 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN 1)
 
 add_executable(realm-lua-playground
     main.cpp
+    realm_util.cpp
+    realm_schema.cpp
     realm_native_lib.cpp
 )
 

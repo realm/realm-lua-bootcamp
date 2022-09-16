@@ -127,46 +127,23 @@ static int _lib_realm_set_value(lua_State* L) {
     // Get arguments from stack
     realm_t** realm = (realm_t**)lua_touserdata(L, 1);
     realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 2);
-    const char* property = lua_tostring(L, 3);
+    const char* property_name = lua_tostring(L, 3);
 
     // Get the property to update based on its string representation
-    realm_property_info_t property_info;
-    realm_class_key_t class_key = realm_object_get_table(*realm_object);
-    bool found = false;
-    if (!realm_find_property(*realm, class_key, property, &found, &property_info)) {
-        // Exception ocurred when fetching the property 
-        return _inform_realm_error(L);
-    }
-    if (!found) {
-        return _inform_error(L, "Property %1 not found", property);
-    }
+    std::optional<realm_property_info_t> property_info;
+    if (!(property_info = get_property_info(L, *realm, *realm_object, property_name))){
+        // Property info not found
+        return 0;
+    } 
 
     // Translate the lua value into corresponding realm value
-    realm_value_t value;
-    switch (property_info.type)
-    {
-    case RLM_PROPERTY_TYPE_INT:
-        value.type = RLM_TYPE_INT;
-        value.integer = lua_tonumber(L, 4);
-        break;
-    case RLM_PROPERTY_TYPE_BOOL:
-        value.type = RLM_TYPE_BOOL;
-        value.boolean = lua_toboolean(L, 4);
-        break;
-    case RLM_PROPERTY_TYPE_STRING:
-        value.type = RLM_TYPE_STRING;
-        value.string.size = lua_rawlen(L, 4);
-        value.string.data = lua_tostring(L, 4);
-        break;
-    case RLM_PROPERTY_TYPE_DOUBLE:
-        value.type = RLM_TYPE_DOUBLE;
-        value.dnum = lua_tonumber(L, 4);
-        break;
-    default:
-        return _inform_error(L, "No valid type found");
+    std::optional<realm_value> value;
+    if (!(value = lua_to_realm_value(L, 4))){
+        // No corresponding realm value found
+        return 0;
     }
 
-    if (!realm_set_value(*realm_object, property_info.key, value, false)) {
+    if (!realm_set_value(*realm_object, property_info->key, *value, false)) {
         // Exception ocurred when setting value
         return _inform_realm_error(L);
     }
@@ -177,52 +154,23 @@ static int _lib_realm_get_value(lua_State* L) {
     // Get arguments from stack
     realm_t** realm = (realm_t**)lua_touserdata(L, 1);
     realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 2);
-    const char* property = lua_tostring(L, 3);
+    const char* property_name = lua_tostring(L, 3);
 
     // Get the property to fetch from based on its string representation
-    realm_property_info_t property_info;
-    realm_class_key_t class_key = realm_object_get_table(*realm_object);
-    bool found = false;
-    if (!realm_find_property(*realm, class_key, property, &found, &property_info)) {
-        // Exception ocurred when fetching the property 
-        return _inform_realm_error(L);
-    }
-    if (!found){
-        return _inform_error(L, "Unable to fetch value from property %1", property);
-    }
-    
-    // Fetch desired value
-    realm_value_t out_value;
-    if (!realm_get_value(*realm_object, property_info.key, &out_value)) {
-        // Exception ocurred while trying to fetch value
-        return _inform_realm_error(L);
-    }
+    if (auto property_info = get_property_info(L, *realm, *realm_object, property_name)){
+        // Fetch desired value
+        realm_value_t out_value;
+        if (!realm_get_value(*realm_object, property_info->key, &out_value)) {
+            // Exception ocurred while trying to fetch value
+            return _inform_realm_error(L);
+        }
 
-    // Push correct lua value based on Realm type
-    switch (out_value.type)
-    {
-    case RLM_TYPE_NULL:
-        lua_pushnil(L);
-        break;
-    case RLM_TYPE_INT:
-        lua_pushinteger(L, out_value.integer);
-        break;
-    case RLM_TYPE_BOOL:
-        lua_pushboolean(L, out_value.boolean);
-        break;
-    case RLM_TYPE_STRING:
-        lua_pushstring(L, out_value.string.data);
-        break;
-    case RLM_TYPE_FLOAT:
-        lua_pushnumber(L, out_value.fnum);
-        break;
-    case RLM_TYPE_DOUBLE:
-        lua_pushnumber(L, out_value.dnum);
-        break;
-    default:
-        return _inform_error(L, "Uknown type");
+        // Push correct lua value based on Realm type
+        return realm_to_lua_value(L, out_value);
+    } else {
+        // No value found
+        return 0;
     }
-    return 1;
 }
 
 static int _lib_realm_object_get_all(lua_State* L) {
@@ -359,9 +307,10 @@ static int _lib_realm_object_add_listener(lua_State* L) {
     return 0;
 }
 
+
 static realm_query_t* _lib_realm_query_parse(lua_State* L, realm_t *realm, const char* class_name, const char* query_string, size_t num_args, size_t lua_arg_offset) {
     // Value which keeps track of the start location of arguments on the stack
-    size_t arg_index;
+    int arg_index;
 
     // Setup 2d vector to contain all realm_arguments provided
     std::vector<realm_query_arg_t> args_vector;
@@ -369,32 +318,12 @@ static realm_query_t* _lib_realm_query_parse(lua_State* L, realm_t *realm, const
     for(int index = 0; index < num_args; index++){
         std::vector<realm_value_t>& realm_values = value.emplace_back();
         arg_index = lua_arg_offset + index;
-        // TODO: add support for lists as input
-        if (lua_type(L, arg_index) == LUA_TNUMBER){
-            // Value is either of type double or int, need further investigation
-            if (lua_isinteger(L, arg_index)){
-                realm_values.emplace_back(realm_value_t{
-                    .type = RLM_TYPE_INT,
-                    .integer = lua_tointeger(L, arg_index),
-                });
-            } else {
-                realm_values.emplace_back(realm_value_t{
-                    .type = RLM_TYPE_DOUBLE,
-                    .dnum = lua_tonumber(L, arg_index),
-                });
-            }
-        } else if (lua_type(L, arg_index) == LUA_TSTRING){
-            realm_values.emplace_back(realm_value_t{
-                .type = RLM_TYPE_STRING,
-                .string.size = lua_rawlen(L, arg_index),
-                .string.data = lua_tostring(L, arg_index),
-            });
-        } else if (lua_type(L, arg_index) == LUA_TBOOLEAN){
-            realm_values.emplace_back(realm_value_t{
-                .type = RLM_TYPE_BOOL,
-                .boolean = static_cast<bool>(lua_toboolean(L, arg_index)),
-            });
+        std::optional<realm_value_t> value;
+        if (!(value = lua_to_realm_value(L, arg_index))){
+            // Unknown value provided
+            return nullptr;
         }
+        realm_values.emplace_back(*value);
         args_vector.emplace_back(realm_query_arg_t{
             .nb_args = 1,
             .is_list = false,

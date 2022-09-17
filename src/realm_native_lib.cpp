@@ -228,25 +228,78 @@ static int _lib_realm_results_count(lua_State* L) {
     return 1;
 }
 
-void on_collection_change(realm_lua_userdata* userdata, const realm_collection_changes_t* changes) {
+static void populate_lua_collection_changes_table(lua_State* L, int table_index, const char* field_name, size_t* changes_indices, size_t changes_indices_size) {
+    // Push an empty table onto the stack acting as a Lua array.
+    lua_newtable(L);
+    for (size_t index = 0; index < changes_indices_size; index++) {
+        // Get the index of the changed object (changes_indices[index])
+        // and convert to Lua's 1-based index (+1) and push onto stack.
+        lua_pushinteger(L, changes_indices[index] + 1);
+        // Add the above index value to the table/array at position "index + 1"
+        // and pop it from the stack.
+        lua_rawseti(L, -2, index + 1);
+    }
+
+    // Set the above array (top of the stack) to be the value of
+    // the field_name key on the table and pop from the stack.
+    // (Table: { <field_name>: <changes_indices> })
+    lua_setfield(L, table_index, field_name);
+}
+
+static void on_collection_change(realm_lua_userdata* userdata, const realm_collection_changes_t* changes) {
     lua_State* L = userdata->L;
     int callback_reference = userdata->callback_reference;
 
-    // Put the Lua listener function on the top of the stack.
+    // Get the Lua callback function from the register and put onto the stack.
     lua_rawgeti(L, LUA_REGISTRYINDEX, callback_reference);
 
-    // TODO: Go through the change set and build arguments.
-    // (Lua expects: 1st arg: collection, 2nd arg: changes)
-    lua_pushstring(L, "Hello");
-    lua_pushstring(L, "World");
-    int status = lua_pcall(L, 2, 0, 0);
+    size_t num_deletions;
+    size_t num_insertions;
+    size_t num_modifications;
+    realm_collection_changes_get_num_changes(
+        changes,
+        &num_deletions,
+        &num_insertions,
+        &num_modifications,
+        nullptr
+    );
+
+    size_t deletions_indices[num_deletions];
+    size_t insertions_indices[num_insertions];
+    size_t modifications_indices[num_modifications];
+    size_t modifications_indices_after[num_modifications];
+    realm_collection_changes_get_changes(
+        changes,
+        deletions_indices,
+        num_deletions,
+        insertions_indices,
+        num_insertions,
+        modifications_indices,
+        num_modifications,
+        modifications_indices_after,
+        num_modifications,
+        nullptr,
+        0
+    );
+
+    // Push a new table onto the stack and add the indices arrays to the corresponding
+    // keys (e.g. { deletions: <deletions_indices>, insertions: <insertion_indices> }).
+    lua_newtable(L);
+    int table_index = lua_gettop(L);
+    populate_lua_collection_changes_table(L, table_index, "deletions", deletions_indices, num_deletions);
+    populate_lua_collection_changes_table(L, table_index, "insertions", insertions_indices, num_insertions);
+    populate_lua_collection_changes_table(L, table_index, "modifications", modifications_indices, num_modifications);
+    populate_lua_collection_changes_table(L, table_index, "modificationsAfter", modifications_indices_after, num_modifications);
+
+    // Call the callback function with the above table (top of stack) as the 1 argument.
+    int status = lua_pcall(L, 1, 0, 0);
     if (status != LUA_OK) {
-        _inform_error(L, "Could not call the listener function.");
+        _inform_error(L, "Could not call the callback function.");
         return;
     }
 }
 
-void free_userdata(realm_lua_userdata* userdata) {
+static void free_userdata(realm_lua_userdata* userdata) {
     // Get the callback reference from the registry and unreference it
     // so that Lua can garbage collect it.
     luaL_unref(userdata->L, LUA_REGISTRYINDEX, userdata->callback_reference);

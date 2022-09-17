@@ -7,7 +7,7 @@ local RealmObject = require "realm.object"
 -- Add "filter" etc. as instance methods on RealmResults
 
 ---@class RealmResults
----@field add_listener function
+---@field addListener function
 ---@field filter function
 local RealmResults = {
     __index = function(mytable, key)

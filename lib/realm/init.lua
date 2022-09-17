@@ -88,8 +88,14 @@ function Realm:_createResults(handle, className)
         _handle = handle,
         _realm = self,
     }
-    function result:add_listener(on_collection_change)
-        return native.realm_results_add_listener(handle, on_collection_change)
+    function result:addListener(onCollectionChange)
+        -- Create a listener that is passed to cpp which, when called, in turn calls
+        -- the user's listener (onCollectionChange). This makes it possible to pass
+        -- the result (self) from Lua instead of cpp.
+        local function listener(changes)
+            onCollectionChange(self, changes)
+        end
+        return native.realm_results_add_listener(handle, listener)
     end
     function result:filter(query_string, ...)
         local handle = native.realm_results_filter(self._handle, self._realm._handle, className, query_string, select('#', ...), ...)

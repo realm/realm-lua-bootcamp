@@ -258,7 +258,7 @@ static int _lib_realm_results_add_listener(lua_State* L) {
     realm_results_t **results = (realm_results_t**)lua_touserdata(L, 1);
     
     // Pop 2nd argument/top of stack (the Lua function) from the stack and save a
-    // refernce to it in the register. "callback_reference" is the register location.
+    // reference to it in the register. "callback_reference" is the register location.
     int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
 
     // Create a pointer to userdata for use in the callback that
@@ -377,7 +377,7 @@ static const luaL_Reg lib[] = {
   {"realm_results_get",             _lib_realm_results_get},
   {"realm_results_count",           _lib_realm_results_count},
   {"realm_results_add_listener",    _lib_realm_results_add_listener},
-  {"realm_results_filter",       _lib_realm_results_filter},
+  {"realm_results_filter",          _lib_realm_results_filter},
   {NULL, NULL}
 };
 

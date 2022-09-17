@@ -1,4 +1,5 @@
 local native = require "_realm_native"
+local RealmObject = require "realm.object"
 
 -- TODO:
 -- Perhaps add RealmResultsBase

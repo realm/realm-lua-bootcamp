@@ -52,13 +52,27 @@ function Realm:write(writeCallback)
     end
 end
 
----@param class_name string
+---@param className string
 ---@return RealmObject
-function Realm:create(class_name)
+function Realm:create(className)
+    local handle = native.realm_object_create(self._handle, className)
+    return self:_createObject(handle)
+end
+
+function Realm:_createObject(handle)
     local object = {
-        _handle = native.realm_object_create(self._handle, class_name),
+        _handle = handle,
         _realm = self
     }
+    function object:addListener(onObjectChange)
+        -- Create a listener that is passed to cpp which, when called, in turn calls
+        -- the user's listener (onCollectionChange). This makes it possible to pass
+        -- the object (self) from Lua instead of cpp.
+        local function listener(changes)
+            onObjectChange(self, changes)
+        end
+        return native.realm_object_add_listener(object._handle, listener)
+    end
     table.insert(self._childHandles, object._handle)
     object = setmetatable(object, RealmObject)
     return object

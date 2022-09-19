@@ -18,10 +18,16 @@ local realm = Realm.open({
     }
 })
 
-local persons = realm:objects("Person")
+---@class RealmCollectionChanges
+---@field deletions table
+---@field insertions table
+---@field modifications table
+---@field modificationsAfter table
 
+---@param persons RealmResults
+---@param changes RealmCollectionChanges
 local function onPersonsChange(persons, changes)
-    print("Reacting to changes..")
+    print("Reacting to Person collection changes..")
 
     for _, deletionIndex in ipairs(changes.deletions) do
         print("Deletion:", "index:", deletionIndex)
@@ -40,32 +46,50 @@ local function onPersonsChange(persons, changes)
     end
 end
 
--- Collection listener
--- NOTE: Consume the return value in order to not be garbage collected
-local notificationToken = persons:addListener(onPersonsChange)
-print(notificationToken)
+---@class RealmObjectChanges
+---@field isDeleted boolean
+---@field modifiedProperties table
 
+---@param person RealmObject
+---@param changes RealmObjectChanges
+local function onPersonChange(person, changes)
+    print("Reacting to Person object changes...")
 
-local test_person
-realm:write(function()
-    test_person = realm:create("Person")
-    test_person.name = "Jacob"
-    test_person.age = 1337
-    return 0
-end)
-print(test_person["name"])
-print(test_person["age"])
+    if (changes.isDeleted) then
+        print("The person was deleted.")
+        return
+    end
 
+    for _, prop in ipairs(changes.modifiedProperties) do
+        -- TODO:
+        -- We're currently just receiving the prop key as an int (typedef int64_t realm_property_key_t)
+        print("prop:", prop)
 
-print("#persons:", #persons)
-if (#persons > 0) then
-    -- 1-based indexing
-    print("persons[1].name:", persons[1].name)
+        -- But we should receive the string property names so that we can write: person[prop]
+        -- print("Modification:", "Modified prop:", prop, "New value:", person[prop])
 
-    -- Object listener
-    -- persons[1].addListener(onPersonChange)
+        -- Would be good to have the corresponding names cached on the Lua side so that we don't
+        -- need to loop the property keys in CPP and call the C API each time the object changes.
+    end
 end
 
-local filtered_persons = persons:filter("name = $0 and age = $1", "Jacob", 1337)
-print("len filter...")
-print(#filtered_persons)
+local persons = realm:objects("Person")
+
+-- NOTE: Consume the return value in order to not be garbage collected
+local personsCollectionNotificationToken = persons:addListener(onPersonsChange)
+print("Collection notification token:", personsCollectionNotificationToken)
+
+local testPerson
+realm:write(function()
+    testPerson = realm:create("Person")
+    testPerson.name = "Jacob"
+    testPerson.age = 1337
+    return 0
+end)
+
+-- NOTE: Consume the return value in order to not be garbage collected
+local personObjectNotificationToken = testPerson:addListener(onPersonChange)
+print("Object notification token:", personObjectNotificationToken)
+
+local filteredPersons = persons:filter("name = $0 and age = $1", "Jacob", 1337)
+print("#filteredPersons:", #filteredPersons)

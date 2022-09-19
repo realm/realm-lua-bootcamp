@@ -16,6 +16,19 @@ function Realm:__gc()
     self:close()
 end
 
+---Checks whether class exists in schema, throws error if not. 
+---@param className string
+---@param realm Realm
+---@return Realm.Schema.ClassInformation?
+local function _safeGetClass(realm, className)
+    local classInfo = realm._schema[className]
+    if classInfo == nil then
+        error("Class not found in schema");
+        return nil
+    end
+    return classInfo
+end
+
 ---@generic T
 ---@param writeCallback fun(): T
 ---@return T
@@ -34,12 +47,7 @@ end
 ---@param className string
 ---@return RealmObject?
 function Realm:create(className)
-    local class_info = self._schema[className]
-    if class_info == nil then
-        error("Class not found in schema");
-        return nil
-    end
-    return RealmObject:new(self, class_info)
+    return RealmObject:new(self, _safeGetClass(self, className))
 end
 
 ---Explicitly close this realm, releasing its native resources
@@ -53,30 +61,9 @@ end
 ---@param className string
 ---@return RealmResults
 function Realm:objects(className)
+    local classInfo = _safeGetClass(self, className)
     local result_handle = native.realm_object_get_all(self._handle, className)
-    return self:_createResults(result_handle, className)
-end
-
-function Realm:_createResults(handle, className)
-   local result = {
-        _handle = handle,
-        _realm = self,
-    }
-    function result:addListener(onCollectionChange)
-        -- Create a listener that is passed to cpp which, when called, in turn calls
-        -- the user's listener (onCollectionChange). This makes it possible to pass
-        -- the result (self) from Lua instead of cpp.
-        local function listener(changes)
-            onCollectionChange(self, changes)
-        end
-        return native.realm_results_add_listener(handle, listener)
-    end
-    function result:filter(query_string, ...)
-        local handle = native.realm_results_filter(self._handle, self._realm._handle, className, query_string, select('#', ...), ...)
-        return self._realm:_createResults(handle, className)
-    end
-    result = setmetatable(result, RealmResults)
-    return result
+    return RealmResults:new(self, result_handle, classInfo)
 end
 
 ---@param config Realm.Config

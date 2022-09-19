@@ -1,7 +1,3 @@
-#ifndef REALM_LUA_UTIL_H
-#define REALM_LUA_UTIL_H
-
-#include <realm.h>
 #include "realm_util.hpp"
 
 int _inform_realm_error(lua_State* L) {
@@ -95,5 +91,3 @@ std::optional<realm_property_info_t> get_property_info_by_key(lua_State* L, real
     }
     return property_info;
 }
-
-#endif

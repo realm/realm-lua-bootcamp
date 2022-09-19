@@ -5,6 +5,7 @@ add_executable(realm-lua-playground
     realm_util.cpp
     realm_schema.cpp
     realm_native_lib.cpp
+    realm_notifications.cpp
 )
 
 target_compile_definitions(realm-lua-playground PUBLIC

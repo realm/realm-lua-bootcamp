@@ -284,8 +284,8 @@ static void on_collection_change(realm_lua_userdata* userdata, const realm_colle
     int table_index = lua_gettop(L);
     populate_lua_collection_changes_table(L, table_index, "deletions", deletions_indices, num_deletions);
     populate_lua_collection_changes_table(L, table_index, "insertions", insertions_indices, num_insertions);
-    populate_lua_collection_changes_table(L, table_index, "modificationsNew", modifications_indices_old, num_modifications);
-    populate_lua_collection_changes_table(L, table_index, "modificationsOld", modifications_indices_new, num_modifications);
+    populate_lua_collection_changes_table(L, table_index, "modificationsOld", modifications_indices_old, num_modifications);
+    populate_lua_collection_changes_table(L, table_index, "modificationsNew", modifications_indices_new, num_modifications);
 
     // Call the callback function with the above table (top of stack) as the 1 argument.
     int status = lua_pcall(L, 1, 0, 0);
@@ -315,9 +315,6 @@ static int _lib_realm_results_add_listener(lua_State* L) {
     realm_lua_userdata* userdata = new realm_lua_userdata;
     userdata->L = L;
     userdata->callback_reference = callback_reference;
-
-    // TODO:
-    // Deal with notification_token
 
     // Put the notification token on the stack.
     auto** notification_token = static_cast<realm_notification_token_t**>(lua_newuserdata(L, sizeof(realm_notification_token_t*)));
@@ -369,10 +366,9 @@ static void on_object_change(realm_lua_userdata* userdata, const realm_object_ch
     }
 
     lua_State* L = userdata->L;
-    int callback_reference = userdata->callback_reference;
 
     // Get the Lua callback function from the register and put onto the stack.
-    lua_rawgeti(L, LUA_REGISTRYINDEX, callback_reference);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->callback_reference);
 
     // Push a new table onto the stack and add isDeleted and modifiedProperties
     // ({ isDeleted: <bool>, modifiedProperties: <modified_properties> }).

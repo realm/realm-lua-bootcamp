@@ -66,8 +66,8 @@ function Realm:_createObject(handle)
     }
     function object:addListener(onObjectChange)
         -- Create a listener that is passed to cpp which, when called, in turn calls
-        -- the user's listener (onCollectionChange). This makes it possible to pass
-        -- the object (self) from Lua instead of cpp.
+        -- the user's listener (onObjectChange). This makes it possible to pass the
+        -- object (self) from Lua instead of cpp.
         local function listener(changes)
             onObjectChange(self, changes)
         end

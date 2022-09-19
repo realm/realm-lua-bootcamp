@@ -89,3 +89,6 @@ print("Object notification token:", personObjectNotificationToken)
 
 local filteredPersons = persons:filter("name = $0 and age = $1", "Jacob", 1337)
 print("#filteredPersons:", #filteredPersons)
+
+-- TODO:
+-- Deal with notification_token and use when closing a realm

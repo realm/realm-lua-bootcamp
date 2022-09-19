@@ -32,7 +32,6 @@ function RealmResults:new(realm ,handle, classInfo)
         addListener = addListener,
         filter = filter,
     }
-    -- result.addListener = addListener
     result = setmetatable(result, RealmResults)
     return result
 end

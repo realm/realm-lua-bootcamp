@@ -19,10 +19,10 @@ local realm = Realm.open({
 })
 
 ---@class RealmCollectionChanges
----@field deletions table
----@field insertions table
----@field modificationsOld table
----@field modificationsNew table
+---@field deletions table<number, number>
+---@field insertions table<number, number>
+---@field modificationsOld table<number, number>
+---@field modificationsNew table<number, number>
 
 ---@param persons RealmResults
 ---@param changes RealmCollectionChanges
@@ -44,7 +44,7 @@ end
 
 ---@class RealmObjectChanges
 ---@field isDeleted boolean
----@field modifiedProperties table
+---@field modifiedProperties table<number, number>  -- NOTE: Will change to table<number, string>
 
 ---@param person RealmObject
 ---@param changes RealmObjectChanges

@@ -257,17 +257,17 @@ static void on_collection_change(realm_lua_userdata* userdata, const realm_colle
 
     size_t deletions_indices[num_deletions];
     size_t insertions_indices[num_insertions];
-    size_t modifications_indices[num_modifications];
-    size_t modifications_indices_after[num_modifications];
+    size_t modifications_indices_old[num_modifications];
+    size_t modifications_indices_new[num_modifications];
     realm_collection_changes_get_changes(
         changes,
         deletions_indices,
         num_deletions,
         insertions_indices,
         num_insertions,
-        modifications_indices,
+        modifications_indices_old,
         num_modifications,
-        modifications_indices_after,
+        modifications_indices_new,
         num_modifications,
         nullptr,
         0
@@ -284,8 +284,8 @@ static void on_collection_change(realm_lua_userdata* userdata, const realm_colle
     int table_index = lua_gettop(L);
     populate_lua_collection_changes_table(L, table_index, "deletions", deletions_indices, num_deletions);
     populate_lua_collection_changes_table(L, table_index, "insertions", insertions_indices, num_insertions);
-    populate_lua_collection_changes_table(L, table_index, "modifications", modifications_indices, num_modifications);
-    populate_lua_collection_changes_table(L, table_index, "modificationsAfter", modifications_indices_after, num_modifications);
+    populate_lua_collection_changes_table(L, table_index, "modificationsNew", modifications_indices_old, num_modifications);
+    populate_lua_collection_changes_table(L, table_index, "modificationsOld", modifications_indices_new, num_modifications);
 
     // Call the callback function with the above table (top of stack) as the 1 argument.
     int status = lua_pcall(L, 1, 0, 0);

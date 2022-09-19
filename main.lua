@@ -21,8 +21,8 @@ local realm = Realm.open({
 ---@class RealmCollectionChanges
 ---@field deletions table
 ---@field insertions table
----@field modifications table
----@field modificationsAfter table
+---@field modificationsOld table
+---@field modificationsNew table
 
 ---@param persons RealmResults
 ---@param changes RealmCollectionChanges
@@ -37,12 +37,8 @@ local function onPersonsChange(persons, changes)
         print("Insertion:", "name:", persons[insertionIndex].name, "age:", persons[insertionIndex].age)
     end
 
-    for _, modificationIndex in ipairs(changes.modifications) do
-        print("Modification:", "name:", persons[modificationIndex].name, "age:", persons[modificationIndex].age)
-    end
-
-    for _, modificationIndexAfter in ipairs(changes.modificationsAfter) do
-        print("Modification:", "name:", persons[modificationIndexAfter].name, "age:", persons[modificationIndexAfter].age)
+    for _, modificationIndexNew in ipairs(changes.modificationsNew) do
+        print("Modification:", "name:", persons[modificationIndexNew].name, "age:", persons[modificationIndexNew].age)
     end
 end
 

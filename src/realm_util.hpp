@@ -18,11 +18,14 @@ int _inform_error(lua_State* L, const char* format, Args&&... args) {
 // Realm through realm_get_last_error.
 int _inform_realm_error(lua_State* L);
 
-// Converts a lua value on the stack into a corresponding real value
+// Converts a lua value on the stack into a corresponding realm value
 std::optional<realm_value_t> lua_to_realm_value(lua_State* L, int arg_index);
 
 // Converts a realm value to a corresponding lua value and pushes it onto the stack
 int realm_to_lua_value(lua_State* L, realm_value_t value);
 
 // Fetches property info based on an object and its property name
-std::optional<realm_property_info_t> get_property_info(lua_State* L, realm_t* realm, realm_object_t* object, const char* property_name);
+std::optional<realm_property_info_t> get_property_info_by_name(lua_State* L, realm_t* realm, realm_object_t* object, const char* property_name);
+
+// Fetches property info based on an object and its property key
+std::optional<realm_property_info_t> get_property_info_by_key(lua_State* L, realm_t* realm, realm_object_t* object, realm_property_key_t property_key);

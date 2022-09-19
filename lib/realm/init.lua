@@ -52,13 +52,27 @@ function Realm:write(writeCallback)
     end
 end
 
----@param class_name string
+---@param className string
 ---@return RealmObject
-function Realm:create(class_name)
+function Realm:create(className)
+    local handle = native.realm_object_create(self._handle, className)
+    return self:_createObject(handle)
+end
+
+function Realm:_createObject(handle)
     local object = {
-        _handle = native.realm_object_create(self._handle, class_name),
+        _handle = handle,
         _realm = self
     }
+    function object:addListener(onObjectChange)
+        -- Create a listener that is passed to cpp which, when called, in turn calls
+        -- the user's listener (onObjectChange). This makes it possible to pass the
+        -- object (self) from Lua instead of cpp.
+        local function listener(changes)
+            onObjectChange(self, changes)
+        end
+        return native.realm_object_add_listener(object._handle, listener)
+    end
     table.insert(self._childHandles, object._handle)
     object = setmetatable(object, RealmObject)
     return object
@@ -88,8 +102,14 @@ function Realm:_createResults(handle, className)
         _handle = handle,
         _realm = self,
     }
-    function result:add_listener(on_collection_change)
-        return native.realm_results_add_listener(handle, on_collection_change)
+    function result:addListener(onCollectionChange)
+        -- Create a listener that is passed to cpp which, when called, in turn calls
+        -- the user's listener (onCollectionChange). This makes it possible to pass
+        -- the result (self) from Lua instead of cpp.
+        local function listener(changes)
+            onCollectionChange(self, changes)
+        end
+        return native.realm_results_add_listener(handle, listener)
     end
     function result:filter(query_string, ...)
         local handle = native.realm_results_filter(self._handle, self._realm._handle, className, query_string, select('#', ...), ...)

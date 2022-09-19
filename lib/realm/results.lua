@@ -1,4 +1,5 @@
 local native = require "_realm_native"
+local RealmObject = require "realm.object"
 
 -- TODO:
 -- Perhaps add RealmResultsBase
@@ -6,7 +7,7 @@ local native = require "_realm_native"
 -- Add "filter" etc. as instance methods on RealmResults
 
 ---@class RealmResults
----@field add_listener function
+---@field addListener function
 ---@field filter function
 local RealmResults = {
     __index = function(mytable, key)

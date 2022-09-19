@@ -42,4 +42,4 @@ function RealmObject:__newindex(prop, value)
     native.realm_set_value(self._realm._handle, self._handle, self.class.properties[prop].key, value)
 end
 
-return RealmObject;
+return RealmObject

@@ -6,6 +6,8 @@ local RealmObject = require "realm.object"
 -- Set it as RealmResults' metatable
 -- Add "filter" etc. as instance methods on RealmResults
 
+---@module '.object'
+
 ---@class RealmResults
 ---@field addListener function
 ---@field filter function

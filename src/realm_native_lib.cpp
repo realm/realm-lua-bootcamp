@@ -117,14 +117,7 @@ static int _lib_realm_set_value(lua_State* L) {
     // Get arguments from stack
     realm_t** realm = (realm_t**)lua_touserdata(L, 1);
     realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 2);
-    const char* property_name = lua_tostring(L, 3);
-
-    // Get the property to update based on its string representation
-    std::optional<realm_property_info_t> property_info;
-    if (!(property_info = get_property_info_by_name(L, *realm, *realm_object, property_name))){
-        // Property info not found
-        return 0;
-    } 
+    const int property_key = lua_tointeger(L, 3);
 
     // Translate the lua value into corresponding realm value
     std::optional<realm_value> value;
@@ -133,7 +126,7 @@ static int _lib_realm_set_value(lua_State* L) {
         return 0;
     }
 
-    if (!realm_set_value(*realm_object, property_info->key, *value, false)) {
+    if (!realm_set_value(*realm_object, property_key, *value, false)) {
         // Exception ocurred when setting value
         return _inform_realm_error(L);
     }
@@ -144,23 +137,16 @@ static int _lib_realm_get_value(lua_State* L) {
     // Get arguments from stack
     realm_t** realm = (realm_t**)lua_touserdata(L, 1);
     realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 2);
-    const char* property_name = lua_tostring(L, 3);
+    const int property_key = lua_tointeger(L, 3);
 
-    // Get the property to fetch from based on its string representation
-    if (auto property_info = get_property_info_by_name(L, *realm, *realm_object, property_name)){
-        // Fetch desired value
-        realm_value_t out_value;
-        if (!realm_get_value(*realm_object, property_info->key, &out_value)) {
-            // Exception ocurred while trying to fetch value
-            return _inform_realm_error(L);
-        }
-
-        // Push correct lua value based on Realm type
-        return realm_to_lua_value(L, out_value);
-    } else {
-        // No value found
-        return 0;
+    realm_value_t out_value;
+    if (!realm_get_value(*realm_object, property_key, &out_value)) {
+        // Exception ocurred while trying to fetch value
+        return _inform_realm_error(L);
     }
+
+    // Push correct lua value based on Realm type
+    return realm_to_lua_value(L, out_value);
 }
 
 static int _lib_realm_object_get_all(lua_State* L) {

@@ -1,84 +1,45 @@
 local native = require "_realm_native"
 
----@class Realm
----@field _handle userdata
----@field _schema table
----@field _childHandles userdata[]
-local Realm = {}
-Realm.__index = Realm
+---@module '.classes'
 
 local RealmObject = require "realm.object"
 local RealmResults = require "realm.results"
 
----@module '.schema'
+---@class Realm
+---@field _handle userdata
+---@field _schema table<string, Realm.Schema.ClassInformation>
+---@field _childHandles userdata[]
+local Realm = {}
+Realm.__index = Realm
 
----@class Realm.Config
----@field path string
----@field schemaVersion integer
----@field schema Realm.Schema.ClassDefinition[]
-
----@param config Realm.Config
-function Realm.open(config)
-    local _handle, _schema = native.realm_open(config)
-    local self = setmetatable({
-        _handle = _handle,
-        _schema = _schema,
-        _childHandles = setmetatable({}, { __mode = "v"}) -- a table of weak references
-    }, Realm)
-    return self
-end
-
-function Realm:begin_transaction()
-    native.realm_begin_write(self._handle)
-end
-
-function Realm:commit_transaction()
-    native.realm_commit_transaction(self._handle)
-end
-
-function Realm:cancel_transaction()
-    native.realm_cancel_transaction(self._handle)
+function Realm:__gc()
+    self:close()
 end
 
 ---@generic T
 ---@param writeCallback fun(): T
 ---@return T
 function Realm:write(writeCallback)
-    self:begin_transaction()
+    native.realm_begin_write(self._handle)
     local status, result = pcall(writeCallback)
     if (status) then
-        self:commit_transaction()
+        native.realm_commit_transaction(self._handle)
         return result
     else
-        self:cancel_transaction()
+        native.realm_cancel_transaction(self._handle)
         error(result)
     end
 end
 
 ---@param className string
----@return RealmObject
+---@return RealmObject?
 function Realm:create(className)
-    local handle = native.realm_object_create(self._handle, className)
-    return self:_createObject(handle)
-end
-
-function Realm:_createObject(handle)
-    local object = {
-        _handle = native.realm_object_create(self._handle, self._schema[class_name].class_key),
-        _realm = self
-    }
-    function object:addListener(onObjectChange)
-        -- Create a listener that is passed to cpp which, when called, in turn calls
-        -- the user's listener (onObjectChange). This makes it possible to pass the
-        -- object (self) from Lua instead of cpp.
-        local function listener(changes)
-            onObjectChange(self, changes)
-        end
-        return native.realm_object_add_listener(object._handle, listener)
+    local class_info = self._schema[className]
+    if class_info == nil then
+        error("Class not found in schema");
+        return nil
     end
-    table.insert(self._childHandles, object._handle)
-    object = setmetatable(object, RealmObject)
-    return object
+    return RealmObject:new(self, class_info)
 end
 
 ---Explicitly close this realm, releasing its native resources
@@ -87,10 +48,6 @@ function Realm:close()
         native.realm_release(handle)
     end
     native.realm_release(self._handle)
-end
-
-function Realm.__gc(realm)
-    realm:close()
 end
 
 ---@param className string
@@ -120,6 +77,17 @@ function Realm:_createResults(handle, className)
     end
     result = setmetatable(result, RealmResults)
     return result
+end
+
+---@param config Realm.Config
+function Realm.open(config)
+    local _handle, _schema = native.realm_open(config)
+    local self = setmetatable({
+        _handle = _handle,
+        _schema = _schema,
+        _childHandles = setmetatable({}, { __mode = "v"}) -- a table of weak references
+    }, Realm)
+    return self
 end
 
 return Realm

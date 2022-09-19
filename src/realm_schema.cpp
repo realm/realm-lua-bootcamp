@@ -167,21 +167,26 @@ void _push_schema_info(lua_State* L, const realm_t* realm) {
         lua_setfield(L, -2, "name");
 
         lua_pushinteger(L, class_info.table_key.value);
-        lua_setfield(L, -2, "class_key");
+        lua_setfield(L, -2, "key");
 
         // Create a property lookup table where [property_name] => property_info
         lua_newtable(L);
-        for(realm::Property property_info : class_info.computed_properties) {
+        for(realm::Property property_info : class_info.persisted_properties) {
             lua_newtable(L);
             
             property_name = property_info.name.c_str();
             lua_pushstring(L, property_name);
             lua_setfield(L, -2, "name");
-
-            realm_property_type_e property_type = realm::c_api::to_capi(property_info.type);
             
-            // lua_setfield(L, -2, "name");
+            lua_pushinteger(L, property_info.column_key.value);
+            lua_setfield(L, -2, "key");
+            
+            lua_pushinteger(L, realm::c_api::to_capi(property_info.type));
+            lua_setfield(L, -2, "type");
+ 
+            lua_setfield(L, -2, property_name);
         }
+        lua_setfield(L, -2, "properties");
         
         // Set the field on the greater schema info table
         // for easy lookup by class name.

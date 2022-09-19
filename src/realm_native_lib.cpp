@@ -131,7 +131,7 @@ static int _lib_realm_set_value(lua_State* L) {
 
     // Get the property to update based on its string representation
     std::optional<realm_property_info_t> property_info;
-    if (!(property_info = get_property_info(L, *realm, *realm_object, property_name))){
+    if (!(property_info = get_property_info_by_name(L, *realm, *realm_object, property_name))){
         // Property info not found
         return 0;
     } 
@@ -157,7 +157,7 @@ static int _lib_realm_get_value(lua_State* L) {
     const char* property_name = lua_tostring(L, 3);
 
     // Get the property to fetch from based on its string representation
-    if (auto property_info = get_property_info(L, *realm, *realm_object, property_name)){
+    if (auto property_info = get_property_info_by_name(L, *realm, *realm_object, property_name)){
         // Fetch desired value
         realm_value_t out_value;
         if (!realm_get_value(*realm_object, property_info->key, &out_value)) {

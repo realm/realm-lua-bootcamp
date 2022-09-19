@@ -69,7 +69,7 @@ int realm_to_lua_value(lua_State* L, realm_value_t value){
     return 1;
 }
 
-std::optional<realm_property_info_t> get_property_info(lua_State* L, realm_t* realm, realm_object_t* object, const char* property_name){
+std::optional<realm_property_info_t> get_property_info_by_name(lua_State* L, realm_t* realm, realm_object_t* object, const char* property_name){
     realm_property_info_t property_info;
     realm_class_key_t class_key = realm_object_get_table(object);
     bool found = false;
@@ -80,6 +80,17 @@ std::optional<realm_property_info_t> get_property_info(lua_State* L, realm_t* re
     }
     if (!found){
         _inform_error(L, "Unable to fetch value from property %1", property_name);
+        return std::nullopt;
+    }
+    return property_info;
+}
+
+std::optional<realm_property_info_t> get_property_info_by_key(lua_State* L, realm_t* realm, realm_object_t* object, realm_property_key_t property_key) {
+    realm_property_info_t property_info;
+    realm_class_key_t class_key = realm_object_get_table(object);
+    if (!realm_get_property(realm, class_key, property_key, &property_info)) {
+        // Exception ocurred when fetching the property 
+        _inform_realm_error(L);
         return std::nullopt;
     }
     return property_info;

@@ -22,24 +22,24 @@ end
 ---@param realm Realm
 ---@param classInfo Realm.Schema.ClassInformation
 ---@return RealmObject 
-function RealmObject:new(realm, classInfo, values)
+function RealmObject:new(realm, classInfo, values, handle)
     local noPrimaryKey = (classInfo.primaryKey == nil or classInfo.primaryKey == '')
 
-    local objectHandle
-    if (noPrimaryKey) then
-        objectHandle = native.realm_object_create(realm._handle, classInfo.key)
-    else
-        objectHandle = native.realm_object_create_with_primary_key(realm._handle, classInfo.key, values[classInfo.primaryKey])
-        -- Remove primaryKey from values to insert since it's already in the created object
-        values[classInfo.primaryKey] = nil
-    end
-        -- Insert rest of the values into the created object
-    for prop, value in pairs(values) do
-        native.realm_set_value(realm._handle, objectHandle, classInfo.properties[prop].key, value)
-    end
-    
+    if handle == nil then
+        if (noPrimaryKey) then
+            handle = native.realm_object_create(realm._handle, classInfo.key)
+        else
+            handle = native.realm_object_create_with_primary_key(realm._handle, classInfo.key, values[classInfo.primaryKey])
+            -- Remove primaryKey from values to insert since it's already in the created object
+            values[classInfo.primaryKey] = nil
+        end
+            -- Insert rest of the values into the created object
+        for prop, value in pairs(values) do
+            native.realm_set_value(realm._handle, handle, classInfo.properties[prop].key, value)
+        end
+    end 
     local object = {
-        _handle = objectHandle,
+        _handle = handle,
         _realm = realm,
         class = classInfo,
         addListener = addListener,
@@ -54,14 +54,7 @@ function RealmObject:__index(prop)
     -- refClass is only returned if the field is a reference to an object.
     local value, refClass = native.realm_get_value(self._realm._handle, self._handle, self.class.properties[prop].key)
     if refClass ~= nil then
-        local object = {
-            _handle = value,
-            _realm = self._realm,
-            class = self._realm._schema[refClass],
-            addListener = addListener,
-        }
-        object = setmetatable(object, RealmObject)
-        return object
+        return RealmObject:new(self._realm, self._realm._schema[refClass], value)
     end
     return value
 end

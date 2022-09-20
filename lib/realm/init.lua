@@ -19,12 +19,12 @@ end
 ---Checks whether class exists in schema, throws error if not. 
 ---@param className string
 ---@param realm Realm
----@return Realm.Schema.ClassInformation?
+---@return Realm.Schema.ClassInformation
 local function _safeGetClass(realm, className)
     local classInfo = realm._schema[className]
     if classInfo == nil then
         error("Class not found in schema");
-        return nil
+        return {}
     end
     return classInfo
 end

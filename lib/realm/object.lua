@@ -20,6 +20,7 @@ local function addListener(self, onObjectChange)
 end
 
 ---@param realm Realm
+---@param classInfo Realm.Schema.ClassInformation
 ---@return RealmObject 
 function RealmObject:new(realm, classInfo, values)
     local noPrimaryKey = (classInfo.primaryKey == nil or classInfo.primaryKey == '')
@@ -50,12 +51,33 @@ end
 
 --- @param prop string 
 function RealmObject:__index(prop)
-    return native.realm_get_value(self._realm._handle, self._handle, self.class.properties[prop].key)
+    -- refClass is only returned if the field is a reference to an object.
+    local value, refClass = native.realm_get_value(self._realm._handle, self._handle, self.class.properties[prop].key)
+    if refClass ~= nil then
+        local object = {
+            _handle = value,
+            _realm = self._realm,
+            class = self._realm._schema[refClass],
+            addListener = addListener,
+        }
+        object = setmetatable(object, RealmObject)
+        return object
+    end
+    return value
 end
 
 --- @param prop string
 --- @param value any
 function RealmObject:__newindex(prop, value)
+    -- Ensure only Realm Objects are set for references to fields.
+    if (type(value) == "table") then
+        if getmetatable(value) == RealmObject then
+            native.realm_set_value(self._realm._handle, self._handle, self.class.properties[prop].key, value._handle)
+        else
+            error('Only other Realm Objects can be set as references for the property "' .. prop .. '"')
+        end
+        return
+    end
     native.realm_set_value(self._realm._handle, self._handle, self.class.properties[prop].key, value)
 end
 

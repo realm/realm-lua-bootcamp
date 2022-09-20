@@ -1,3 +1,4 @@
+---@diagnostic disable: undefined-field
 local Realm = require "realm"
 
 ---@class Person
@@ -12,7 +13,15 @@ local realm = Realm.open({
             name = "Person",
             properties = {
                 name = "string",
-                age = "int"
+                age = "int",
+                pet = "Pet?",
+            }
+        },
+        {
+            name = "Pet",
+            properties = {
+                name = "string",
+                category = "string",
             }
         },
         {
@@ -106,3 +115,25 @@ print("#filteredPersons:", #filteredPersons)
 
 -- TODO:
 -- Deal with notification_token and use when closing a realm
+
+-- TEST REFERENCES
+realm:write(function()
+    local personWithACat = realm:create("Person")
+    assert(personWithACat)
+    personWithACat.name = "Katy"
+
+    local cat = realm:create("Pet")
+    assert(cat)
+    cat.name = "Mongo"
+    assert(cat.name == "Mongo")
+
+    personWithACat.pet = cat
+    assert(personWithACat.pet)
+    assert(personWithACat.pet.name == "Mongo", "Referenced object must match reference properties")
+    cat.category = "Cat"
+    assert(personWithACat.pet.category == "Cat", "Updating referenced object must match reference")
+    
+    personWithACat.pet.category = "Dog"
+    assert(cat.category == "Dog", "Updating reference must match referenced object")
+    return 0
+end)

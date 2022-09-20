@@ -1,3 +1,5 @@
+#ifndef REALM_LUA_UTIL_H
+#define REALM_LUA_UTIL_H
 #include <lua.hpp>
 
 #include <realm.h>
@@ -9,9 +11,6 @@ template <typename... Args>
 int _inform_error(lua_State* L, const char* format, Args&&... args) {
     lua_pushstring(L, realm::util::format(format, args...).c_str());
     return lua_error(L);
-
-    // TODO:
-    // Compare to luaL_error
 }
 
 // Informs the user about the last error that occured in
@@ -29,3 +28,5 @@ std::optional<realm_property_info_t> get_property_info_by_name(lua_State* L, rea
 
 // Fetches property info based on an object and its property key
 std::optional<realm_property_info_t> get_property_info_by_key(lua_State* L, realm_t* realm, realm_object_t* object, realm_property_key_t property_key);
+
+#endif

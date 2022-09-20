@@ -2,6 +2,9 @@
 #include <vector>
 #include <lua.hpp>
 
+#include <realm/object-store/c_api/types.hpp>
+#include <realm/object-store/c_api/conversion.hpp>
+
 #include "realm_util.hpp"
 #include "realm_schema.hpp"
 
@@ -115,7 +118,7 @@ realm_schema_t* _parse_schema(lua_State* L) {
 
         // Iterate through key-values of a specific class' properties table.
         // (Push nil since lua_next starts by popping.)
-        std::vector<realm_property_info_t>& class_properties = *properties_vector.emplace({});
+        std::vector<realm_property_info_t>& class_properties = properties_vector.emplace_back(std::vector<realm_property_info_t>());
         lua_pushnil(L);
         while(lua_next(L, -2) != 0) {
             // Copy the key.
@@ -146,4 +149,47 @@ realm_schema_t* _parse_schema(lua_State* L) {
     lua_pop(L, 1);
 
     return realm_schema_new(classes, classes_len, properties);
+}
+
+void _push_schema_info(lua_State* L, const realm_t* realm) {
+    const realm::Schema& schema = (*realm)->schema();
+    
+    lua_newtable(L);
+
+    const char* class_name;
+    const char* property_name;
+    for(realm::ObjectSchema class_info : schema) {
+        lua_newtable(L);
+        
+        // Set fields
+        class_name = class_info.name.c_str();
+        lua_pushstring(L, class_name);
+        lua_setfield(L, -2, "name");
+
+        lua_pushinteger(L, class_info.table_key.value);
+        lua_setfield(L, -2, "key");
+
+        // Create a property lookup table where [property_name] => property_info
+        lua_newtable(L);
+        for(realm::Property property_info : class_info.persisted_properties) {
+            lua_newtable(L);
+            
+            property_name = property_info.name.c_str();
+            lua_pushstring(L, property_name);
+            lua_setfield(L, -2, "name");
+            
+            lua_pushinteger(L, property_info.column_key.value);
+            lua_setfield(L, -2, "key");
+            
+            lua_pushinteger(L, realm::c_api::to_capi(property_info.type));
+            lua_setfield(L, -2, "type");
+ 
+            lua_setfield(L, -2, property_name);
+        }
+        lua_setfield(L, -2, "properties");
+        
+        // Set the field on the greater schema info table
+        // for easy lookup by class name.
+        lua_setfield(L, -2, class_name);
+    }
 }

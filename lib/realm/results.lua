@@ -25,15 +25,16 @@ local function filter(self, query_string, ...)
 end
 
 function RealmResults:new(realm ,handle, classInfo)
-    local result = {
+    local results = {
         _handle = handle,
         _realm = realm,
         class = classInfo,
         addListener = addListener,
         filter = filter,
     }
-    result = setmetatable(result, RealmResults)
-    return result
+    table.insert(realm._childHandles, results._handle)
+    results = setmetatable(results, RealmResults)
+    return results
 end
 
 function RealmResults:__index(key)

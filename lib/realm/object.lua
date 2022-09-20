@@ -9,6 +9,16 @@ local native = require "_realm_native"
 ---@field addListener function
 local RealmObject = {}
 
+local function addListener(self, onObjectChange)
+    -- Create a listener that is passed to cpp which, when called, in turn calls
+    -- the user's listener (onObjectChange). This makes it possible to pass the
+    -- object (self) from Lua instead of cpp.
+    local function listener(changes)
+        onObjectChange(self, changes)
+    end
+    return native.realm_object_add_listener(self._handle, listener)
+end
+
 ---@param realm Realm
 ---@return RealmObject 
 function RealmObject:new(realm, classInfo)
@@ -16,16 +26,8 @@ function RealmObject:new(realm, classInfo)
         _handle = native.realm_object_create(realm._handle, classInfo.key),
         _realm = realm,
         class = classInfo,
+        addListener = addListener,
     }
-    function object:addListener(onObjectChange)
-        -- Create a listener that is passed to cpp which, when called, in turn calls
-        -- the user's listener (onObjectChange). This makes it possible to pass the
-        -- object (self) from Lua instead of cpp.
-        local function listener(changes)
-            onObjectChange(self, changes)
-        end
-        return native.realm_object_add_listener(object._handle, listener)
-    end
     table.insert(realm._childHandles, object._handle)
     object = setmetatable(object, RealmObject)
     return object

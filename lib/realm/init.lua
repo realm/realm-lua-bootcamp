@@ -62,8 +62,8 @@ end
 ---@return RealmResults
 function Realm:objects(className)
     local classInfo = _safeGetClass(self, className)
-    local result_handle = native.realm_object_get_all(self._handle, className)
-    return RealmResults:new(self, result_handle, classInfo)
+    local resultHandle = native.realm_object_get_all(self._handle, className)
+    return RealmResults:new(self, resultHandle, classInfo)
 end
 
 ---@param config Realm.Config

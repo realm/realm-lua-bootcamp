@@ -20,25 +20,34 @@ local function addListener(self, onObjectChange)
 end
 
 ---@param realm Realm
+---@param classInfo Realm.Schema.ClassInformation
+---@param values table<string, any>?
+---@param handle userdata?
 ---@return RealmObject 
-function RealmObject:new(realm, classInfo, values)
+function RealmObject:new(realm, classInfo, values, handle)
     local noPrimaryKey = (classInfo.primaryKey == nil or classInfo.primaryKey == '')
-
-    local objectHandle
-    if (noPrimaryKey) then
-        objectHandle = native.realm_object_create(realm._handle, classInfo.key)
-    else
-        objectHandle = native.realm_object_create_with_primary_key(realm._handle, classInfo.key, values[classInfo.primaryKey])
-        -- Remove primaryKey from values to insert since it's already in the created object
-        values[classInfo.primaryKey] = nil
-    end
-        -- Insert rest of the values into the created object
-    for prop, value in pairs(values) do
-        native.realm_set_value(realm._handle, objectHandle, classInfo.properties[prop].key, value)
-    end
-    
+    local hasValues = values ~= nil
+    if handle == nil then
+        if (noPrimaryKey) then
+            handle = native.realm_object_create(realm._handle, classInfo.key)
+        else
+            if not hasValues then
+                error("Primary key not set at declaration")
+                return {}
+            end
+            handle = native.realm_object_create_with_primary_key(realm._handle, classInfo.key, values[classInfo.primaryKey])
+            -- Remove primaryKey from values to insert since it's already in the created object
+            values[classInfo.primaryKey] = nil
+        end
+        if hasValues then
+            -- Insert rest of the values into the created object
+            for prop, value in pairs(values) do
+                native.realm_set_value(realm._handle, handle, classInfo.properties[prop].key, value)
+            end
+        end
+    end 
     local object = {
-        _handle = objectHandle,
+        _handle = handle,
         _realm = realm,
         class = classInfo,
         addListener = addListener,
@@ -48,14 +57,41 @@ function RealmObject:new(realm, classInfo, values)
     return object
 end
 
+---@param schema table<string, Realm.Schema.ClassInformation>
+---@param classKey number
+---@return Realm.Schema.ClassInformation
+local function _findClass(schema, classKey)
+    for _, classInfo in pairs(schema) do
+        if classInfo.key == classKey then
+            return classInfo
+        end
+    end
+    error("Given a class key without a cached class")
+    return {}
+end
+
 --- @param prop string 
 function RealmObject:__index(prop)
-    return native.realm_get_value(self._realm._handle, self._handle, self.class.properties[prop].key)
+    -- refClass is only returned if the field is a reference to an object.
+    local value, refClassKey = native.realm_get_value(self._realm._handle, self._handle, self.class.properties[prop].key)
+    if refClassKey ~= nil then
+        return RealmObject:new(self._realm, _findClass(self._realm._schema, refClassKey), nil, value)
+    end
+    return value
 end
 
 --- @param prop string
 --- @param value any
 function RealmObject:__newindex(prop, value)
+    -- Ensure only Realm Objects are set for references to fields.
+    if (type(value) == "table") then
+        if getmetatable(value) == RealmObject then
+            native.realm_set_value(self._realm._handle, self._handle, self.class.properties[prop].key, value._handle)
+        else
+            error('Only other Realm Objects can be set as references for the property "' .. prop .. '"')
+        end
+        return
+    end
     native.realm_set_value(self._realm._handle, self._handle, self.class.properties[prop].key, value)
 end
 

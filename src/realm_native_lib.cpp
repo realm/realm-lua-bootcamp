@@ -96,7 +96,7 @@ static int _lib_realm_object_create(lua_State* L) {
 
     // Get arguments from stack
     realm_t** realm = (realm_t**)lua_touserdata(L, 1);
-    const int class_key = lua_tointeger(L, 2);
+    const int64_t class_key = lua_tointeger(L, 2);
 
     // Create object and feed it into the RealmObject handle
     *realm_object = realm_object_create(*realm, class_key); 
@@ -158,7 +158,7 @@ static int _lib_realm_get_value(lua_State* L) {
     }
 
     // Push correct lua value based on Realm type
-    return realm_to_lua_value(L, out_value);
+    return realm_to_lua_value(L, *realm, out_value);
 }
 
 static int _lib_realm_object_delete(lua_State* L) {

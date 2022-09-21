@@ -32,13 +32,22 @@ std::optional<realm_value_t> lua_to_realm_value(lua_State* L, int arg_index){
             .type = RLM_TYPE_BOOL,
             .boolean = static_cast<bool>(lua_toboolean(L, arg_index)),
         };
+    } else if (lua_type(L, arg_index) == LUA_TUSERDATA) {
+            // All userdata is meant to be a reference to a valid Realm Object
+            luaL_checkudata(L, arg_index, RealmHandle);
+            realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, arg_index);
+            luaL_setmetatable(L, RealmHandle);
+            return realm_value_t{
+            .type = RLM_TYPE_LINK,
+            .link = realm_object_as_link(*realm_object)
+        };
     } else {
         _inform_error(L, "Uknown Lua type");
         return std::nullopt;
     }
 }
 
-int realm_to_lua_value(lua_State* L, realm_value_t value){
+int realm_to_lua_value(lua_State* L, realm_t* realm, realm_value_t value){
     switch (value.type)
     {
     case RLM_TYPE_NULL:
@@ -59,6 +68,13 @@ int realm_to_lua_value(lua_State* L, realm_value_t value){
     case RLM_TYPE_DOUBLE:
         lua_pushnumber(L, value.dnum);
         break;
+    case RLM_TYPE_LINK: {
+        realm_object_t* object = realm_get_object(realm, value.link.target_table, value.link.target);
+        realm_object_t** realm_object_pointer = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
+        *realm_object_pointer = object;
+        lua_pushinteger(L, value.link.target_table);
+        return 2;
+    }
     default:
         return _inform_error(L, "Uknown realm type");
     }

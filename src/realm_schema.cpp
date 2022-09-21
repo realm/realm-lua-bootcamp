@@ -17,7 +17,7 @@ bool ends_with (const std::string_view& full_string, const std::string_view& end
     }
 }
 
-static void _parse_property_type(lua_State* L, realm_property_info_t& prop, std::string_view type) {
+static void _parse_property_type(lua_State* L, realm_property_info_t& prop, std::string_view type, std::vector<std::string>& strings) {
     if (!type.size()) {
         _inform_error(L, "");
     }
@@ -82,8 +82,8 @@ static void _parse_property_type(lua_State* L, realm_property_info_t& prop, std:
         prop.type = RLM_PROPERTY_TYPE_UUID;
     }
     else {
-        _inform_error(L, "Unknown type");
-        prop.type = RLM_PROPERTY_TYPE_MIXED;
+        prop.type = RLM_PROPERTY_TYPE_OBJECT;
+        prop.link_target = strings.emplace_back(type).c_str();
     }
 }
 
@@ -98,7 +98,8 @@ realm_schema_t* _parse_schema(lua_State* L) {
     const realm_property_info_t* properties[classes_len];
     // 2D vector of class properties to act as a memory buffer
     // for the actual properties array.
-    std::vector<std::vector<realm_property_info_t>> properties_vector = {};
+    std::vector<std::vector<realm_property_info_t>> properties_vector;
+    std::vector<std::string> properties_strings;
 
     int argument_index = lua_gettop(L);
     for (size_t i = 1; i <= classes_len; i++) {
@@ -142,7 +143,7 @@ realm_schema_t* _parse_schema(lua_State* L) {
                     : RLM_PROPERTY_NORMAL
 
             });
-            _parse_property_type(L, property_info, lua_tostring(L, -2));
+            _parse_property_type(L, property_info, lua_tostring(L, -2), properties_strings);
             lua_pop(L, 2);
         }
         // Drop the properties field.

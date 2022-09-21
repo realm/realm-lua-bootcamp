@@ -16,7 +16,9 @@ local function addListener(self, onCollectionChange)
     local function listener(changes)
         onCollectionChange(self, changes)
     end
-    return native.realm_results_add_listener(self._handle, listener)
+    local notificationToken = native.realm_results_add_listener(self._handle, listener)
+    table.insert(self._realm._childHandles, notificationToken)
+    return notificationToken
 end
 
 local function filter(self, query_string, ...)
@@ -38,13 +40,8 @@ function RealmResults:new(realm ,handle, classInfo)
 end
 
 function RealmResults:__index(key)
-    local object = {
-        _handle = native.realm_results_get(self._handle, key - 1),
-        _realm = self._realm,
-        class = self.class,
-    }
-    object = setmetatable(object, RealmObject)
-    return object
+    local objectHandle = native.realm_results_get(self._handle, key - 1)
+    return RealmObject:new(self._realm, self.class, nil, objectHandle)
 end
 
 function RealmResults:__len()

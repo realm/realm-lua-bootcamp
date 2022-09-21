@@ -16,7 +16,9 @@ local function addListener(self, onObjectChange)
     local function listener(changes)
         onObjectChange(self, changes)
     end
-    return native.realm_object_add_listener(self._handle, listener)
+    local notificationToken = native.realm_object_add_listener(self._handle, listener)
+    table.insert(self._realm._childHandles, notificationToken)
+    return notificationToken
 end
 
 ---@param realm Realm

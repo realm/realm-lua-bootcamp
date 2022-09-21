@@ -10,6 +10,7 @@
 ---@class Realm.Schema.ClassInformation Schema classes information returned after opening a Realm
 ---@field key integer Class key
 ---@field properties table<string, Realm.Schema.PropertyDefinition>
+---@field primaryKey string
 
 ---@class Realm.Schema.PropertyDefinition
 ---@field type Realm.Schema.PropertyType

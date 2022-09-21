@@ -21,21 +21,29 @@ end
 
 ---@param realm Realm
 ---@param classInfo Realm.Schema.ClassInformation
+---@param values table<string, any>?
+---@param handle userdata?
 ---@return RealmObject 
 function RealmObject:new(realm, classInfo, values, handle)
     local noPrimaryKey = (classInfo.primaryKey == nil or classInfo.primaryKey == '')
-
+    local hasValues = values ~= nil
     if handle == nil then
         if (noPrimaryKey) then
             handle = native.realm_object_create(realm._handle, classInfo.key)
         else
+            if not hasValues then
+                error("Primary key not set at declaration")
+                return {}
+            end
             handle = native.realm_object_create_with_primary_key(realm._handle, classInfo.key, values[classInfo.primaryKey])
             -- Remove primaryKey from values to insert since it's already in the created object
             values[classInfo.primaryKey] = nil
         end
+        if hasValues then
             -- Insert rest of the values into the created object
-        for prop, value in pairs(values) do
-            native.realm_set_value(realm._handle, handle, classInfo.properties[prop].key, value)
+            for prop, value in pairs(values) do
+                native.realm_set_value(realm._handle, handle, classInfo.properties[prop].key, value)
+            end
         end
     end 
     local object = {
@@ -49,12 +57,25 @@ function RealmObject:new(realm, classInfo, values, handle)
     return object
 end
 
+---@param schema table<string, Realm.Schema.ClassInformation>
+---@param classKey number
+---@return Realm.Schema.ClassInformation
+local function _findClass(schema, classKey)
+    for _, classInfo in pairs(schema) do
+        if classInfo.key == classKey then
+            return classInfo
+        end
+    end
+    error("Given a class key without a cached class")
+    return {}
+end
+
 --- @param prop string 
 function RealmObject:__index(prop)
     -- refClass is only returned if the field is a reference to an object.
-    local value, refClass = native.realm_get_value(self._realm._handle, self._handle, self.class.properties[prop].key)
-    if refClass ~= nil then
-        return RealmObject:new(self._realm, self._realm._schema[refClass], value)
+    local value, refClassKey = native.realm_get_value(self._realm._handle, self._handle, self.class.properties[prop].key)
+    if refClassKey ~= nil then
+        return RealmObject:new(self._realm, _findClass(self._realm._schema, refClassKey), nil, value)
     end
     return value
 end

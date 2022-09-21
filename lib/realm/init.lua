@@ -45,9 +45,11 @@ function Realm:write(writeCallback)
 end
 
 ---@param className string
+---@param values table?
+---@param handle userdata?
 ---@return RealmObject?
-function Realm:create(className, values)
-    return RealmObject:new(self, _safeGetClass(self, className), values)
+function Realm:create(className, values, handle)
+    return RealmObject:new(self, _safeGetClass(self, className), values, handle)
 end
 
 ---Explicitly close this realm, releasing its native resources

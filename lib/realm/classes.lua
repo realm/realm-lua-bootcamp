@@ -2,12 +2,33 @@
 
 ---@alias Realm.Schema.PropertyType string | "bool" | "int" | "float" | "string"
 
+---Externally defined classes
+---@see Realm.Object
+---@see Realm.Results
+
 ---@class Realm.Config
 ---@field path string
 ---@field schemaVersion integer
 ---@field schema Realm.Schema.ClassDefinition[]
 
+---@alias Realm.Handle userdata
+
+---@class Realm.ObjectChanges
+---@field isDeleted boolean
+---@field modifiedProperties table<number, number>  -- NOTE: Will change to table<number, string>
+
+---@alias Realm.ObjectChanges.Callback fun(object: Realm.Object, changes: Realm.ObjectChanges) 
+
+---@class Realm.CollectionChanges
+---@field deletions table<number, number>
+---@field insertions table<number, number>
+---@field modificationsOld table<number, number>
+---@field modificationsNew table<number, number>
+
+---@alias Realm.CollectionChanges.Callback fun(results: Realm.Results, changes: Realm.CollectionChanges) 
+
 ---@class Realm.Schema.ClassInformation Schema classes information returned after opening a Realm
+---@field name string Class name
 ---@field key integer Class key
 ---@field properties table<string, Realm.Schema.PropertyDefinition>
 ---@field primaryKey string

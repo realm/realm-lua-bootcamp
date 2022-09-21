@@ -2,13 +2,16 @@ local native = require "_realm_native"
 
 ---@module '.init'
 
----@class RealmObject
+---@class Realm.Object
 ---@field _handle userdata
 ---@field _realm Realm
 ---@field class Realm.Schema.ClassInformation
----@field addListener function
+---@field addListener fun(self: Realm.Object, cb: Realm.ObjectChanges.Callback) : Realm.Handle
 local RealmObject = {}
 
+---@param self Realm.Object
+---@param onObjectChange Realm.ObjectChanges.Callback
+---@return Realm.Handle Notification token
 local function addListener(self, onObjectChange)
     -- Create a listener that is passed to cpp which, when called, in turn calls
     -- the user's listener (onObjectChange). This makes it possible to pass the
@@ -25,7 +28,7 @@ end
 ---@param classInfo Realm.Schema.ClassInformation
 ---@param values table<string, any>?
 ---@param handle userdata?
----@return RealmObject 
+---@return Realm.Object 
 function RealmObject:new(realm, classInfo, values, handle)
     local noPrimaryKey = (classInfo.primaryKey == nil or classInfo.primaryKey == '')
     local hasValues = values ~= nil

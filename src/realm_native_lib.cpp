@@ -177,9 +177,13 @@ static int _lib_realm_object_get_all(lua_State* L) {
         return _inform_error(L, "Unable to find collection");
     }
 
-    // Push result onto stack
-    realm_results_t **result = static_cast<realm_results_t**>(lua_newuserdata(L, sizeof(realm_results_t*)));
-    *result = realm_object_find_all(*realm, class_info.key);
+    // Push results onto stack
+    realm_results_t **results = static_cast<realm_results_t**>(lua_newuserdata(L, sizeof(realm_results_t*)));
+    *results = realm_object_find_all(*realm, class_info.key);
+
+    // Set the metatable of the results (top of stack) to that
+    // of RealmHandle in order for it to be released via __gc.
+    luaL_setmetatable(L, RealmHandle);
 
     return 1;
 }
@@ -188,12 +192,14 @@ static int _lib_realm_results_get(lua_State* L) {
     // Get arguments from stack
     realm_results_t **realm_results = (realm_results_t **)lua_touserdata(L, 1);
     int index = lua_tointeger(L, 2);
-    
-    // Setup return value which is a realm_object
-    realm_object_t **object = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
 
-    // Fetch object
+    // Push realm object onto stack
+    realm_object_t **object = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
     *object = realm_results_get_object(*realm_results, index);
+
+    // Set the metatable of the object (top of stack) to that
+    // of RealmHandle in order for it to be released via __gc.
+    luaL_setmetatable(L, RealmHandle);
 
     return 1;
 }
@@ -337,6 +343,11 @@ static int _lib_realm_results_filter(lua_State *L){
     }
     realm_results_t **result = static_cast<realm_results_t**>(lua_newuserdata(L, sizeof(realm_results_t*)));
     *result = realm_results_filter(*unfiltered_result, query);
+
+    // Set the metatable of the results (top of stack) to that
+    // of RealmHandle in order for it to be released via __gc.
+    luaL_setmetatable(L, RealmHandle);
+
     return 1;
 }
 

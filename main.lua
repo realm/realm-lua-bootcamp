@@ -20,17 +20,19 @@ local realm = Realm.open({
             }
         }
     },
-    sync = {
-        user = app.currentUser
-        -- NOTE: There are more sync config props that could be set.
-    }
+    -- EXAMPLE USAGE
+    -- sync = {
+    --     user = app.currentUser
+    --     -- NOTE: There are more sync config props that could be set.
+    -- }
 })
 
 -- TODO:
 -- Will have to handle "registerEmail" and "logIn" as promises
-app:registerEmail("jane@example.com", "12345")
-local credentials = RealmCredentials:emailPassword("jane@example.com", "12345")
-local user = app:logIn(credentials)
+-- EXAMPLE USAGE:
+-- app:registerEmail("jane@example.com", "12345")
+-- local credentials = RealmCredentials:emailPassword("jane@example.com", "12345")
+-- local user = app:logIn(credentials)
 
 ---@class RealmCollectionChanges
 ---@field deletions table<number, number>

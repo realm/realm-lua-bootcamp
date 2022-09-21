@@ -11,8 +11,8 @@ function RealmCredentials:anonymous()
 end
 
 ---Get a RealmCredentials object to use for authenticating a user with email and password.
----@param email string
----@param password string
+---@param email string The email to use.
+---@param password string The password to associate with the email.
 ---@return RealmCredentials
 function RealmCredentials:emailPassword(email, password)
 

@@ -33,8 +33,10 @@ std::optional<realm_value_t> lua_to_realm_value(lua_State* L, int arg_index){
             .boolean = static_cast<bool>(lua_toboolean(L, arg_index)),
         };
     } else if (lua_type(L, arg_index) == LUA_TUSERDATA) {
-        // All userdata is meant to be a reference to a valid Realm Object
+            // All userdata is meant to be a reference to a valid Realm Object
+            luaL_checkudata(L, arg_index, RealmHandle);
             realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, arg_index);
+            luaL_setmetatable(L, RealmHandle);
             return realm_value_t{
             .type = RLM_TYPE_LINK,
             .link = realm_object_as_link(*realm_object)
@@ -70,10 +72,7 @@ int realm_to_lua_value(lua_State* L, realm_t* realm, realm_value_t value){
         realm_object_t* object = realm_get_object(realm, value.link.target_table, value.link.target);
         realm_object_t** realm_object_pointer = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
         *realm_object_pointer = object;
-        // TODO: approach class-name fetching better or refactor caching.
-        realm_class_info_t class_info;
-        realm_get_class(realm, value.link.target_table, &class_info);
-        lua_pushstring(L, class_info.name);
+        lua_pushinteger(L, value.link.target_table);
         return 2;
     }
     default:

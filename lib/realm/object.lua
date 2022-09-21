@@ -21,9 +21,24 @@ end
 
 ---@param realm Realm
 ---@return RealmObject 
-function RealmObject:new(realm, classInfo)
+function RealmObject:new(realm, classInfo, values)
+    local noPrimaryKey = (classInfo.primaryKey == nil or classInfo.primaryKey == '')
+
+    local objectHandle
+    if (noPrimaryKey) then
+        objectHandle = native.realm_object_create(realm._handle, classInfo.key)
+    else
+        objectHandle = native.realm_object_create_with_primary_key(realm._handle, classInfo.key, values[classInfo.primaryKey])
+        -- Remove primaryKey from values to insert since it's already in the created object
+        values[classInfo.primaryKey] = nil
+    end
+        -- Insert rest of the values into the created object
+    for prop, value in pairs(values) do
+        native.realm_set_value(realm._handle, objectHandle, classInfo.properties[prop].key, value)
+    end
+    
     local object = {
-        _handle = native.realm_object_create(realm._handle, classInfo.key),
+        _handle = objectHandle,
         _realm = realm,
         class = classInfo,
         addListener = addListener,

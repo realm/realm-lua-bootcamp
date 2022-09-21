@@ -21,7 +21,6 @@ static void _parse_property_type(lua_State* L, realm_property_info_t& prop, std:
     if (!type.size()) {
         _inform_error(L, "");
     }
-    prop.flags = RLM_PROPERTY_NORMAL;
     
     if (ends_with(type, "[]")) {
         prop.collection_type = RLM_COLLECTION_TYPE_LIST;
@@ -109,7 +108,10 @@ realm_schema_t* _parse_schema(lua_State* L) {
         lua_getfield(L, -1, "name");
         realm_class_info_t& class_info = classes[i-1];
         class_info.name = lua_tostring(L, -1);
-        class_info.primary_key = "";
+        lua_pop(L, 1);
+
+        // Check if primaryKey is specified for a class in the schema
+        class_info.primary_key = lua_getfield(L, -1, "primaryKey") ? lua_tostring(L, -1) : "";
         lua_pop(L, 1);
 
         // Get properties and iterate through them
@@ -134,6 +136,11 @@ realm_schema_t* _parse_schema(lua_State* L) {
                 .public_name = "",
                 .link_target = "",
                 .link_origin_property_name = "",
+                // Primary keys get implicitly indexed
+                .flags = strcmp(lua_tostring(L, -1), class_info.primary_key) == 0 
+                    ? RLM_PROPERTY_PRIMARY_KEY
+                    : RLM_PROPERTY_NORMAL
+
             });
             _parse_property_type(L, property_info, lua_tostring(L, -2));
             lua_pop(L, 2);
@@ -169,6 +176,11 @@ void _push_schema_info(lua_State* L, const realm_t* realm) {
         lua_pushinteger(L, class_info.table_key.value);
         lua_setfield(L, -2, "key");
 
+        if (class_info.primary_key.size() > 0) {
+            lua_pushstring(L, class_info.primary_key.c_str());
+            lua_setfield(L, -2, "primaryKey");
+        }
+
         // Create a property lookup table where [property_name] => property_info
         lua_newtable(L);
         for(realm::Property property_info : class_info.persisted_properties) {
@@ -177,8 +189,9 @@ void _push_schema_info(lua_State* L, const realm_t* realm) {
             property_name = property_info.name.c_str();
             lua_pushstring(L, property_name);
             lua_setfield(L, -2, "name");
-            
-            lua_pushinteger(L, property_info.column_key.value);
+
+            auto* key_userdata = static_cast<realm_property_key_t*>(lua_newuserdata(L, sizeof(realm_property_key_t))); 
+            *key_userdata = property_info.column_key.value;
             lua_setfield(L, -2, "key");
             
             lua_pushinteger(L, realm::c_api::to_capi(property_info.type));

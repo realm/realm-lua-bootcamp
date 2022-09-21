@@ -67,6 +67,7 @@ function Realm:objects(className)
 end
 
 ---@param config Realm.Config
+---@return Realm
 function Realm.open(config)
     local _handle, _schema = native.realm_open(config)
     local self = setmetatable({

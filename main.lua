@@ -1,4 +1,8 @@
 local Realm = require "realm"
+local RealmApp = require "realm.app"
+local RealmCredentials = require "realm.credentials"
+
+local app = RealmApp:new({ appId = "MY_APP_ID" })
 
 ---@class Person
 ---@field name string
@@ -15,8 +19,18 @@ local realm = Realm.open({
                 age = "int"
             }
         }
+    },
+    sync = {
+        user = app.currentUser
+        -- NOTE: There are more sync config props that could be set.
     }
 })
+
+-- TODO:
+-- Will have to handle "registerEmail" and "logIn" as promises
+app:registerEmail("jane@example.com", "12345")
+local credentials = RealmCredentials:emailPassword("jane@example.com", "12345")
+local user = app:logIn(credentials)
 
 ---@class RealmCollectionChanges
 ---@field deletions table<number, number>

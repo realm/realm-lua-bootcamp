@@ -14,6 +14,14 @@ local realm = Realm.open({
                 name = "string",
                 age = "int"
             }
+        },
+        {
+            name = "Person2",
+            properties = {
+                name = "string",
+                age = "int"
+            },
+            primaryKey = "name"
         }
     }
 })
@@ -77,9 +85,7 @@ print("Collection notification token:", personsCollectionNotificationToken)
 
 local testPerson
 realm:write(function()
-    testPerson = realm:create("Person")
-    testPerson.name = "Jacob"
-    testPerson.age = 1337
+    testPerson = realm:create("Person", {name = "Jacob", age = 1337})
     return 0
 end)
 
@@ -89,6 +95,14 @@ print("Object notification token:", personObjectNotificationToken)
 
 local filteredPersons = persons:filter("name = $0 and age = $1", "Jacob", 1337)
 print("#filteredPersons:", #filteredPersons)
+
+-- NOTE: Uncomment to test PK functionality, could be annoying to have since it will throw an error if run multiple times
+-- local testPerson2
+-- realm:write(function()
+--     testPerson2 = realm:create("Person2", {name = "pk3", age = 1337})
+--     return 0
+-- end)
+-- print(testPerson2.name)
 
 -- TODO:
 -- Deal with notification_token and use when closing a realm

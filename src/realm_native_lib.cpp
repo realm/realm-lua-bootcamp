@@ -107,14 +107,32 @@ static int _lib_realm_object_create(lua_State* L) {
     return 1;
 }
 
+static int _lib_realm_object_create_with_primary_key(lua_State* L) {
+    realm_object_t** realm_object = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
+    luaL_setmetatable(L, RealmHandle);
+    realm_t** realm = (realm_t**)lua_touserdata(L, 1);
+    const int class_key = lua_tointeger(L, 2);
+    std::optional<realm_value_t> pk = lua_to_realm_value(L, 3);
+    if (!pk){
+        // No corresponding realm value found
+        return 0;
+    }
+    *realm_object = realm_object_create_with_primary_key(*realm, class_key, *pk); 
+    if (!*realm_object) {
+        // Exception ocurred when creating an object
+        return _inform_realm_error(L);
+    }
+    return 1;
+}
+
 static int _lib_realm_set_value(lua_State* L) {
     // Get arguments from stack
     realm_t** realm = (realm_t**)lua_touserdata(L, 1);
     realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 2);
-    const int property_key = lua_tointeger(L, 3);
+    realm_property_key_t& property_key = *(static_cast<realm_property_key_t*>(lua_touserdata(L, 3)));
 
     // Translate the lua value into corresponding realm value
-    std::optional<realm_value> value = lua_to_realm_value(L, 4);
+    std::optional<realm_value_t> value = lua_to_realm_value(L, 4);
     if (!value){
         // No corresponding realm value found
         return 0;
@@ -131,7 +149,7 @@ static int _lib_realm_get_value(lua_State* L) {
     // Get arguments from stack
     realm_t** realm = (realm_t**)lua_touserdata(L, 1);
     realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 2);
-    const int property_key = lua_tointeger(L, 3);
+    realm_property_key_t& property_key = *(static_cast<realm_property_key_t*>(lua_touserdata(L, 3)));
 
     realm_value_t out_value;
     if (!realm_get_value(*realm_object, property_key, &out_value)) {
@@ -323,20 +341,21 @@ static int _lib_realm_results_filter(lua_State *L){
 }
 
 static const luaL_Reg lib[] = {
-  {"realm_open",                    _lib_realm_open},
-  {"realm_release",                 _lib_realm_release},
-  {"realm_begin_write",             _lib_realm_begin_write},
-  {"realm_commit_transaction",      _lib_realm_commit_transaction},
-  {"realm_cancel_transaction",      _lib_realm_cancel_transaction},
-  {"realm_object_create",           _lib_realm_object_create},
-  {"realm_set_value",               _lib_realm_set_value},
-  {"realm_get_value",               _lib_realm_get_value},
-  {"realm_object_get_all",          _lib_realm_object_get_all},
-  {"realm_object_add_listener",     _lib_realm_object_add_listener},
-  {"realm_results_get",             _lib_realm_results_get},
-  {"realm_results_count",           _lib_realm_results_count},
-  {"realm_results_add_listener",    _lib_realm_results_add_listener},
-  {"realm_results_filter",          _lib_realm_results_filter},
+  {"realm_open",                            _lib_realm_open},
+  {"realm_release",                         _lib_realm_release},
+  {"realm_begin_write",                     _lib_realm_begin_write},
+  {"realm_commit_transaction",              _lib_realm_commit_transaction},
+  {"realm_cancel_transaction",              _lib_realm_cancel_transaction},
+  {"realm_object_create",                   _lib_realm_object_create},
+  {"realm_object_create_with_primary_key",  _lib_realm_object_create_with_primary_key},
+  {"realm_set_value",                       _lib_realm_set_value},
+  {"realm_get_value",                       _lib_realm_get_value},
+  {"realm_object_get_all",                  _lib_realm_object_get_all},
+  {"realm_object_add_listener",             _lib_realm_object_add_listener},
+  {"realm_results_get",                     _lib_realm_results_get},
+  {"realm_results_count",                   _lib_realm_results_count},
+  {"realm_results_add_listener",            _lib_realm_results_add_listener},
+  {"realm_results_filter",                  _lib_realm_results_filter},
   {NULL, NULL}
 };
 

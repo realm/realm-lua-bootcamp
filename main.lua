@@ -49,8 +49,9 @@ local function assertKeyCount(table, keyCount, message)
 end
 
 -------------------- TESTING REFERENCES FEATURES -------------------- 
+print("Testing references...")
+
 realm:write(function()
-    print("Testing references...")
     local personWithACat = realm:create("Person")
     assert(personWithACat)
     personWithACat.name = "Katy"
@@ -112,6 +113,7 @@ end)
 
 assert(not realm:isValid(testPersonA), "Filtered object must be properly deleted")
 -- -------------------- TESTING PRIMARY KEY FEATURES -------------------- 
+print("Testing primary key features...")
 realm:write(function()
     testPersonA = realm:create("Person2", {name = "H" .. randomAge, age = 1337})
     assert(not pcall(function()
@@ -205,6 +207,6 @@ collectionChangeTest = function()
     end
 
     local collectionNotificationToken = trackedPets:addListener(onPersonsChange)
-    assertRealmHandle(collectionNotificationToken, "Collection otification token must be a Realm Handle")
+    assertRealmHandle(collectionNotificationToken, "Collection notification token must be a Realm Handle")
     print("All tests passed!")
 end

@@ -21,7 +21,7 @@ end
 
 local function filter(self, query_string, ...)
     local handle = native.realm_results_filter(self._handle, self._realm._handle, self.class.name, query_string, select('#', ...), ...)
-    return RealmResults:new(self._realm, handle, self.class.name)
+    return RealmResults:new(self._realm, handle, self.class)
 end
 
 function RealmResults:new(realm ,handle, classInfo)

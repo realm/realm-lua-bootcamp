@@ -90,5 +90,23 @@ print("Object notification token:", personObjectNotificationToken)
 local filteredPersons = persons:filter("name = $0 and age = $1", "Jacob", 1337)
 print("#filteredPersons:", #filteredPersons)
 
+local filteredPerson = filteredPersons[1]
+realm:write(function()
+    --update created person, works due to live objects
+    filteredPerson.name = "John"
+    filteredPerson.age = 42
+    return 0
+end)
+print("filteredperson name", filteredPerson.name)
+print("filteredperson age:", filteredPerson.age)
+
+realm:write(function()
+    realm:delete(testPerson)
+    return 0
+end)
+
+if not realm:isValid(testPerson) then
+    print("Object was successfully deleted")
+end
 -- TODO:
 -- Deal with notification_token and use when closing a realm

@@ -143,6 +143,21 @@ static int _lib_realm_get_value(lua_State* L) {
     return realm_to_lua_value(L, out_value);
 }
 
+static int _lib_realm_object_delete(lua_State* L) {
+    realm_object_t **object = (realm_object_t**)lua_touserdata(L, 1);
+    if (realm_object_delete(*object)){
+        return 0;
+    } else {
+        return _inform_realm_error(L);
+    }
+}
+
+static int _lib_realm_object_is_valid(lua_State* L) {
+    realm_object_t **object = (realm_object_t**)lua_touserdata(L, 1);
+    lua_pushboolean(L, realm_object_is_valid(*object));
+    return 1; 
+}
+
 static int _lib_realm_object_get_all(lua_State* L) {
     // Get arguments from stack
     realm_t **realm = (realm_t**)lua_touserdata(L, 1);
@@ -329,6 +344,8 @@ static const luaL_Reg lib[] = {
   {"realm_commit_transaction",      _lib_realm_commit_transaction},
   {"realm_cancel_transaction",      _lib_realm_cancel_transaction},
   {"realm_object_create",           _lib_realm_object_create},
+  {"realm_object_delete",           _lib_realm_object_delete},
+  {"realm_object_is_valid",         _lib_realm_object_is_valid},
   {"realm_set_value",               _lib_realm_set_value},
   {"realm_get_value",               _lib_realm_get_value},
   {"realm_object_get_all",          _lib_realm_object_get_all},

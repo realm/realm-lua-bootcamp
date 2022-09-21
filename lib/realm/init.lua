@@ -46,8 +46,8 @@ end
 
 ---@param className string
 ---@return RealmObject?
-function Realm:create(className)
-    return RealmObject:new(self, _safeGetClass(self, className))
+function Realm:create(className, values)
+    return RealmObject:new(self, _safeGetClass(self, className), values)
 end
 
 ---Explicitly close this realm, releasing its native resources

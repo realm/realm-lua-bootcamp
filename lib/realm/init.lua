@@ -58,6 +58,16 @@ function Realm:close()
     native.realm_release(self._handle)
 end
 
+---@param object RealmObject 
+function Realm:delete(object)
+    return native.realm_object_delete(object._handle)
+end
+
+---@param object RealmObject 
+function Realm:isValid(object)
+    return native.realm_object_is_valid(object._handle)
+end
+
 ---@param className string
 ---@return RealmResults
 function Realm:objects(className)

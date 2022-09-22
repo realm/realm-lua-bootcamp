@@ -315,18 +315,15 @@ static const luaL_Reg lib[] = {
   {NULL, NULL}
 };
 
-void realm_lib_open(lua_State* L) {
-    // see linit.c from the Lua source code
-    luaL_getsubtable(L, LUA_REGISTRYINDEX, LUA_PRELOAD_TABLE);
-    lua_pushcfunction(L, [](lua_State* L) {
-        luaL_newlib(L, lib);
-        return 1;
-    });
-    lua_setfield(L, -2, "_realm_native");
-    lua_pop(L, 1);
-
+extern "C" int luaopen_realm_native(lua_State* L) {
+    const luaL_Reg realm_handle_funcs[] = {
+        {"__gc", _lib_realm_release},
+        {NULL, NULL}
+    };
     luaL_newmetatable(L, RealmHandle);
-    lua_pushstring(L, "__gc");
-    lua_pushcfunction(L, &_lib_realm_release);
-    lua_settable(L, -3);
+    luaL_setfuncs(L, realm_handle_funcs, 0);
+    lua_pop(L, 1); // pop the RealmHandle metatable off the stack
+
+    luaL_newlib(L, lib);
+    return 1;
 }

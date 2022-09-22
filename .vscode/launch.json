@@ -5,13 +5,38 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "(lua) Debug",
             "type": "lua",
             "request": "launch",
-            "name": "(lua) Debug",
             "program": "${workspaceFolder}/main.lua",
             "luaexe": "${command:cmake.launchTargetPath}",
             "cwd": "${command:cmake.launchTargetDirectory}",
             "stopOnEntry": true,
+            "path": "${workspaceFolder}/lua_modules/share/lua/5.4/?.lua",
+            "cpath": "${workspaceFolder}/lua_modules/lib/lua/5.4/?.so",
+            "preLaunchTask": "build-deps"
+        },
+        {
+            "name": "(c++) Debug",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": ["${workspaceFolder}/main.lua"],
+            "environment": [
+                {
+                    "name": "LUA_PATH",
+                    "value": "${workspaceFolder}/lua_modules/share/lua/5.4/?.lua"
+                },
+                {
+                    "name": "LUA_CPATH",
+                    "value": "${workspaceFolder}/lua_modules/lib/lua/5.4/?.so"
+                }
+            ],
+            "stopAtEntry": false,
+            "cwd": "${command:cmake.launchTargetDirectory}",
+            "externalConsole": false,
+            "MIMode": "lldb",
+            "preLaunchTask": "build-deps"
         },
         {
             "name": "(c++) Attach",

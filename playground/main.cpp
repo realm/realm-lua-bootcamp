@@ -2,9 +2,8 @@
 #include <string>
 
 #include <lua.hpp>
-#include <uv.h>
 
-#include "realm_native_lib.hpp"
+#include "../src/realm_native_lib.hpp"
 
 static int msghandler(lua_State *L) {
     const char *msg = lua_tostring(L, 1);
@@ -69,7 +68,7 @@ int main(int argc, char** argv) {
 
     // Load built-in libraries in the VM instance
     luaL_openlibs(L);
-    realm_lib_open(L);
+    luaL_requiref(L, "realm.native", luaopen_realm_native, 0);
 
     const char* file = SCRIPT_SOURCE_PATH"/main.lua";
 
@@ -90,24 +89,8 @@ int main(int argc, char** argv) {
         }
     }
 
-    // Grab the default loop and store the Lua state in its data slot so we can get it later
-    uv_loop_t* event_loop = uv_default_loop();
-    event_loop->data = L;
-
-    // Handle CTRL + C to stop the event loop, allowing the app to close
-    uv_signal_t interrupt_signal;
-    uv_signal_init(event_loop, &interrupt_signal);
-    uv_signal_start(&interrupt_signal, [](uv_signal_t* handle, int) {
-        std::cout << std::endl << "Received interrupt signal. Exiting." << std::endl;
-        uv_stop(handle->loop);
-    }, SIGINT);
-    uv_unref(reinterpret_cast<uv_handle_t*>(&interrupt_signal));
-
     dofile(L, file);
-    uv_run(event_loop, UV_RUN_DEFAULT);
 
-    uv_close(reinterpret_cast<uv_handle_t*>(&interrupt_signal), nullptr);
-    uv_loop_close(event_loop);
     lua_close(L);
     return 0;
 }

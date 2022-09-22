@@ -1,10 +1,11 @@
-local native = require "_realm_native"
+local native = require "realm.native"
 
 ---@module '.classes'
 
 local RealmObject = require "realm.object"
 local RealmResults = require "realm.results"
 
+--@classmod realm
 ---@class Realm
 ---@field _handle userdata
 ---@field _schema table<string, Realm.Schema.ClassInformation>

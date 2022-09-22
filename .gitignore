@@ -121,3 +121,15 @@ Temporary Items
 
 # End of https://www.toptal.com/developers/gitignore/api/cmake,macos,lua,visualstudiocode
 /build
+
+*.realm
+*.realm.lock
+*.realm.note
+*.realm.management
+
+# Luarocks
+/.luarocks
+/build.luarocks
+/lua_modules
+/luarocks
+/lua

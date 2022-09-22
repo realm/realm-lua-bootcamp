@@ -39,15 +39,6 @@ local function assertRealmHandle(handle, message)
     assert(getmetatable(handle).__name == "_realm_handle", message)
 end
 
-local function assertKeyCount(table, keyCount, message)
-    local numKeys = 0
-    for _, _ in pairs(table.modifiedProperties) do
-        -- TODO: add a check for exact property fields
-        numKeys = numKeys + 1
-    end
-    assert(numKeys == keyCount, message)
-end
-
 -------------------- TESTING REFERENCES FEATURES -------------------- 
 print("Testing references...")
 
@@ -135,14 +126,14 @@ local objectCallbackTester = coroutine.create(function ()
     end)
     coroutine.yield()
 
-    assertKeyCount(personObjectChanges, 1, "Only one property must have been changed")
+    assert(#personObjectChanges.modifiedProperties == 1, "Only one property must have been changed")
     realm:write(function()
         trackedPerson.name = "Yeah"
         trackedPerson.age = 100
     end)
     coroutine.yield()
 
-    assertKeyCount(personObjectChanges, 2, "Only two properties must have been changed")
+    assert(#personObjectChanges.modifiedProperties == 2, "Only two properties must have been changed")
     realm:write(function()
         realm:delete(trackedPerson)
     end)

@@ -1,0 +1,31 @@
+name: Test
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - uses: hendrikmuhs/ccache-action@v1.1
+
+    - uses: leafo/gh-actions-lua@v9
+    - uses: leafo/gh-actions-luarocks@v4
+
+    - run: brew install coreutils
+      if: runner.os == 'macOS'
+
+    - name: build
+      run: |
+        export MAKEFLAGS=-j$(nproc)
+        export PATH="/usr/lib/ccache:/usr/local/opt/ccache/libexec:$PATH"
+        luarocks make
+
+    - name: test
+      run: |
+        eval $(luarocks path)
+        luarocks test

@@ -51,7 +51,7 @@ void on_object_change(realm_lua_userdata* userdata, const realm_object_changes_t
     // Call the callback function with the above table (top of stack) as the 1 argument.
     int status = lua_pcall(L, 1, 0, 0);
     if (status != LUA_OK) {
-        _inform_error(L, "Could not call the callback function.");
+        _inform_error(L, "Could not call the callback function:\n%1", lua_tostring(L, -1));
         return;
     }
 
@@ -123,7 +123,7 @@ void on_collection_change(realm_lua_userdata* userdata, const realm_collection_c
     // Call the callback function with the above table (top of stack) as the 1 argument.
     int status = lua_pcall(L, 1, 0, 0);
     if (status != LUA_OK) {
-        _inform_error(L, "Could not call the callback function.");
+        _inform_error(L, "Could not call the callback function:\n%1", lua_tostring(L, -1));
         return;
     }
 }

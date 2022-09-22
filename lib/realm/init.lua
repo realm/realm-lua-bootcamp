@@ -23,7 +23,7 @@ end
 local function _safeGetClass(realm, className)
     local classInfo = realm._schema[className]
     if classInfo == nil then
-        error("Class not found in schema");
+        error("Class ".. className .. " not found in schema");
         return {}
     end
     return classInfo
@@ -47,7 +47,7 @@ end
 ---@param className string
 ---@param values table?
 ---@param handle userdata?
----@return RealmObject?
+---@return Realm.Object
 function Realm:create(className, values, handle)
     return RealmObject:new(self, _safeGetClass(self, className), values, handle)
 end
@@ -60,18 +60,18 @@ function Realm:close()
     native.realm_release(self._handle)
 end
 
----@param object RealmObject 
+---@param object Realm.Object 
 function Realm:delete(object)
     return native.realm_object_delete(object._handle)
 end
 
----@param object RealmObject 
+---@param object Realm.Object 
 function Realm:isValid(object)
     return native.realm_object_is_valid(object._handle)
 end
 
 ---@param className string
----@return RealmResults
+---@return Realm.Results
 function Realm:objects(className)
     local classInfo = _safeGetClass(self, className)
     local resultHandle = native.realm_object_get_all(self._handle, className)

@@ -1,6 +1,9 @@
 #include "realm_app.hpp"
+#include "curl_http_transport.hpp"
 
 int _lib_realm_app_create(lua_State* L) {
+
+    realm_http_transport* transport = make_curl_http_transport();
 
     // realm.h:
 
@@ -16,6 +19,7 @@ int _lib_realm_app_create(lua_State* L) {
     // Create a realm_app_t
     // RLM_API realm_app_t* realm_app_create(const realm_app_config_t*, const realm_sync_client_config_t*);
 
+    realm_release(transport);
     return 1;
 }
 

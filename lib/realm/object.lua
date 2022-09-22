@@ -1,4 +1,5 @@
 local native = require "_realm_native"
+local classes = require "realm.classes"
 
 ---@module '.init'
 
@@ -27,6 +28,7 @@ end
 function RealmObject:new(realm, classInfo, values, handle)
     local noPrimaryKey = (classInfo.primaryKey == nil or classInfo.primaryKey == '')
     local hasValues = values ~= nil
+    local hasHandle = handle ~= nil
     if handle == nil then
         if (noPrimaryKey) then
             handle = native.realm_object_create(realm._handle, classInfo.key)
@@ -39,12 +41,6 @@ function RealmObject:new(realm, classInfo, values, handle)
             -- Remove primaryKey from values to insert since it's already in the created object
             values[classInfo.primaryKey] = nil
         end
-        if hasValues then
-            -- Insert rest of the values into the created object
-            for prop, value in pairs(values) do
-                native.realm_set_value(realm._handle, handle, classInfo.properties[prop].key, value)
-            end
-        end
     end 
     local object = {
         _handle = handle,
@@ -54,6 +50,12 @@ function RealmObject:new(realm, classInfo, values, handle)
     }
     table.insert(realm._childHandles, object._handle)
     object = setmetatable(object, RealmObject)
+    if (not hasHandle) and hasValues then
+        -- Insert rest of the values into the created object
+        for prop, value in pairs(values) do
+            object[prop] = value
+        end
+    end
     return object
 end
 
@@ -72,8 +74,15 @@ end
 
 --- @param prop string 
 function RealmObject:__index(prop)
+    local property = self.class.properties[prop]
+    if (property.collectionType == classes.CollectionType.List) then
+        local RealmList = require "realm.list"
+        local targetClassInfo = self._realm._schema[property.objectType]
+        local listHandle = native.realm_get_list(self._handle, property.key)
+        return RealmList:new(self._realm, listHandle, targetClassInfo)
+    end
     -- refClass is only returned if the field is a reference to an object.
-    local value, refClassKey = native.realm_get_value(self._realm._handle, self._handle, self.class.properties[prop].key)
+    local value, refClassKey = native.realm_get_value(self._realm._handle, self._handle, property.key)
     if refClassKey ~= nil then
         return RealmObject:new(self._realm, _findClass(self._realm._schema, refClassKey), nil, value)
     end
@@ -83,16 +92,22 @@ end
 --- @param prop string
 --- @param value any
 function RealmObject:__newindex(prop, value)
+    local property = self.class.properties[prop]
+    if not property then
+        error("Property '"..prop.."' not found on type "..self.class.name )
+    end
     -- Ensure only Realm Objects are set for references to fields.
     if (type(value) == "table") then
-        if getmetatable(value) == RealmObject then
-            native.realm_set_value(self._realm._handle, self._handle, self.class.properties[prop].key, value._handle)
-        else
-            error('Only other Realm Objects can be set as references for the property "' .. prop .. '"')
+
+        if getmetatable(value) ~= RealmObject then
+            local targetClassInfo = self._realm._schema[property.objectType]
+            value = RealmObject:new(self._realm, targetClassInfo, value)
         end
+
+        native.realm_set_value(self._realm._handle, self._handle, property.key, value._handle)
         return
     end
-    native.realm_set_value(self._realm._handle, self._handle, self.class.properties[prop].key, value)
+    native.realm_set_value(self._realm._handle, self._handle, property.key, value)
 end
 
 return RealmObject

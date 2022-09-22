@@ -15,6 +15,7 @@ local realm = Realm.open({
                 name = "string",
                 age = "int",
                 pet = "Pet?",
+                pets = "Pet[]",
             }
         },
         {
@@ -95,8 +96,19 @@ print("Collection notification token:", personsCollectionNotificationToken)
 local testPerson
 realm:write(function()
     testPerson = realm:create("Person", {name = "Jacob", age = 1337})
+    local pet = realm:create("Pet", { name = "Turtle"})
+    local pet2 = realm:create("Pet", { name = "Turtle2"})
+    -- NOTE for now we only support insertions at the end of the list
+    table.insert(testPerson.pets, pet)
+    table.insert(testPerson.pets, pet2)
     return 0
 end)
+
+-- tests _lib_realm_list_get
+local petList = testPerson.pets
+
+print("testPerson first pet: ", petList[1].name)
+print("testPerson number of pets: ", #petList)
 
 -- NOTE: Consume the return value in order to not be garbage collected
 local personObjectNotificationToken = testPerson:addListener(onPersonChange)

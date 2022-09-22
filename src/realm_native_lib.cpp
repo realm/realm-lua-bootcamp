@@ -366,6 +366,81 @@ static int _lib_realm_results_filter(lua_State *L){
     return 1;
 }
 
+
+static int _lib_realm_list_insert(lua_State *L){
+    // If index is larger than size of list we invoke insert to append on the last place, otherwise set is called
+    // Get values from lua stack
+    realm_list_t **realm_list = (realm_list_t**)lua_touserdata(L, 1);
+    size_t index = lua_tointeger(L, 2);
+    std::optional<realm_value_t> value = lua_to_realm_value(L, 3);
+
+    if (!value){
+        _inform_error(L, "No corresponding realm value found");
+        return 0;
+    }
+
+    // Get size of list 
+    size_t out_size;
+    if (!realm_list_size(*realm_list, &out_size)){
+        return _inform_realm_error(L);
+    }
+
+    // Call correct insert function
+    bool success;
+    if (index == out_size){
+        success = realm_list_insert(*realm_list, index, *value);
+    } else if(index < out_size){
+        success = realm_list_set(*realm_list, index, *value);
+    } else {
+        return _inform_error(L, "Index out of bounds when setting value in list");
+    }
+    if (!success){
+        return _inform_realm_error(L);
+    }
+    return 0;
+}
+
+static int _lib_realm_list_get(lua_State *L){
+    // Get values from lua stack
+    realm_list_t **realm_list = (realm_list_t**)lua_touserdata(L, 1);
+    realm_t **realm = (realm_t**)lua_touserdata(L, 2);
+    size_t index = lua_tointeger(L, 3);
+
+    // Get value from list 
+    realm_value_t out_value;
+    if (!realm_list_get(*realm_list, index, &out_value)){
+        return _inform_realm_error(L);
+    }
+
+    // return corresponding lua value
+    return realm_to_lua_value(L, *realm, out_value);
+}
+
+static int _lib_realm_list_size(lua_State *L){
+    // Get values from lua stack
+    realm_list_t **realm_list = (realm_list_t**)lua_touserdata(L, 1);
+
+    // Get size of list 
+    size_t out_size;
+    if (!realm_list_size(*realm_list, &out_size)){
+        return _inform_realm_error(L);
+    }
+
+    // Put size on lua stack
+    lua_pushinteger(L, out_size);
+    return 1;
+}
+
+RLM_API realm_list_t* realm_get_list(realm_object_t*, realm_property_key_t);
+static int _lib_realm_get_list(lua_State *L){
+    realm_object_t **realm_object = (realm_object_t**)lua_touserdata(L, 1);
+    realm_property_key_t& property_key = *(static_cast<realm_property_key_t*>(lua_touserdata(L, 2)));
+    realm_list_t **realm_list = static_cast<realm_list_t**>(lua_newuserdata(L, sizeof(realm_results_t*)));
+    *realm_list = realm_get_list(*realm_object, property_key);
+    luaL_setmetatable(L, RealmHandle);
+    return 1;
+}
+
 static const luaL_Reg lib[] = {
   {"realm_open",                            _lib_realm_open},
   {"realm_release",                         _lib_realm_release},
@@ -384,6 +459,10 @@ static const luaL_Reg lib[] = {
   {"realm_results_count",                   _lib_realm_results_count},
   {"realm_results_add_listener",            _lib_realm_results_add_listener},
   {"realm_results_filter",                  _lib_realm_results_filter},
+  {"realm_list_insert",                     _lib_realm_list_insert},
+  {"realm_list_get",                        _lib_realm_list_get},
+  {"realm_list_size",                       _lib_realm_list_size},
+  {"realm_get_list",                       _lib_realm_get_list},
   {NULL, NULL}
 };
 

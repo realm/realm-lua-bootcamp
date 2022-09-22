@@ -36,7 +36,7 @@ function RealmObject:new(realm, classInfo, values, handle)
         if (noPrimaryKey) then
             handle = native.realm_object_create(realm._handle, classInfo.key)
         else
-            if not hasValues then
+            if not hasValues or values[classInfo.primaryKey] == nil then
                 error("Primary key not set at declaration")
                 return {}
             end

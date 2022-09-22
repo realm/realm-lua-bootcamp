@@ -48,7 +48,8 @@ end
 ---@param className string
 ---@param values table?
 ---@param handle userdata?
----@return Realm.Object
+---@generic T : Realm.Object
+---@return T
 function Realm:create(className, values, handle)
     return RealmObject:new(self, _safeGetClass(self, className), values, handle)
 end

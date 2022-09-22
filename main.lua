@@ -1,10 +1,6 @@
 ---@diagnostic disable: undefined-field
 local Realm = require "realm"
 
----@class Person
----@field name string
----@field age integer
-
 local realm = Realm.open({
     path = "./bootcamp.realm",
     schemaVersion = 0,
@@ -34,6 +30,7 @@ local realm = Realm.open({
         }
     }
 })
+
 
 local function assertRealmHandle(handle, message)
     assert(getmetatable(handle).__name == "_realm_handle", message)
@@ -73,7 +70,7 @@ local filteredPersons = trackedPersons:filter("age = $0", randomAge)
 local testPersonA
 local testPersonB
 
-realm:write(function ()
+realm:write(function()
     testPersonA = realm:create("Person", {name = "Jacob", age = randomAge})
     testPersonB = realm:create("Person", {name = "Mongo", age = randomAge})
 end)
@@ -120,7 +117,7 @@ local personObjectChanges
 local trackedPerson
 local collectionChangeTest
 
-local objectCallbackTester = coroutine.create(function ()
+local objectCallbackTester = coroutine.create(function()
     realm:write(function()
         trackedPerson.name = "Woo"
     end)
@@ -148,11 +145,7 @@ realm:write(function()
 end)
 
 ---@type Realm.ObjectChanges.Callback
-local function onPersonChange(person, changes)
-    assert(person._handle == trackedPerson._handle, "Object changes must return reference to correct object")
-    personObjectChanges = changes
-    assert(coroutine.resume(objectCallbackTester))
-end
+
 
 -- NOTE: Consume the return value in order to not be garbage collected
 local objectNotificationToken = trackedPerson:addListener(onPersonChange)
@@ -167,7 +160,7 @@ collectionChangeTest = function()
     ---@type Realm.CollectionChanges
     local personCollectionChanges
 
-    local collectionCallbackTester = coroutine.create(function ()
+    local collectionCallbackTester = coroutine.create(function()
         local newCat;
         local newDog;
         realm:write(function()

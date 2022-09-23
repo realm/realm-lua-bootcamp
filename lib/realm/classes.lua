@@ -7,6 +7,14 @@
 ---@field schemaVersion integer
 ---@field schema Realm.Schema.ClassDefinition[]
 
+---@class Realm.Sync.Config
+---@field schema Realm.Schema.ClassDefinition[]
+---@field sync Realm.Sync.Config.SyncPropertyDefinition
+
+---@class Realm.Sync.Config.SyncPropertyDefinition
+---@field user RealmUser The currently logged in user.
+---@field partitionValue string The value used for syncing objects with its partition key field set to this value.
+
 ---@class Realm.Schema.ClassInformation Schema classes information returned after opening a Realm
 ---@field key integer Class key
 ---@field properties table<string, Realm.Schema.PropertyDefinition>

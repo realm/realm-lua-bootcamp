@@ -1,4 +1,4 @@
-local native = require "_realm_native"
+local native = require "realm.native"
 
 ---@class RealmUser
 ---@field id string The id of the user.

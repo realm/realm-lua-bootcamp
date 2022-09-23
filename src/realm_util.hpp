@@ -1,6 +1,7 @@
 #ifndef REALM_LUA_UTIL_H
 #define REALM_LUA_UTIL_H
 #include <lua.hpp>
+#include <string_view>
 
 #include <realm.h>
 #include <realm/util/to_string.hpp>
@@ -30,12 +31,31 @@ inline int log_lua_error(lua_State* L, int status) {
 std::optional<realm_value_t> lua_to_realm_value(lua_State* L, int arg_index);
 
 // Converts a realm value to a corresponding lua value and pushes it onto the stack
-int realm_to_lua_value(lua_State* L, realm_value_t value);
+int realm_to_lua_value(lua_State* L, realm_t* realm, realm_value_t value);
 
 // Fetches property info based on an object and its property name
 std::optional<realm_property_info_t> get_property_info_by_name(lua_State* L, realm_t* realm, realm_object_t* object, const char* property_name);
 
 // Fetches property info based on an object and its property key
 std::optional<realm_property_info_t> get_property_info_by_key(lua_State* L, realm_t* realm, realm_object_t* object, realm_property_key_t property_key);
+
+// Checks whether given fullString ends with ending 
+inline bool ends_with (const std::string_view& full_string, const std::string_view& ending) {
+    if (full_string.length() >= ending.length()) {
+        return (0 == full_string.compare (full_string.length() - ending.length(), ending.length(), ending));
+    } else {
+        return false;
+    }
+}
+
+inline std::string_view lua_tostringview(lua_State* L, int index) {
+    size_t len;
+    const char* data = lua_tolstring(L, index, &len);
+    if (data) {
+        return std::string_view(data, len);
+    }
+
+    return {};
+}
 
 #endif

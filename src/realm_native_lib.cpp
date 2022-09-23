@@ -76,10 +76,21 @@ static int _lib_realm_open(lua_State* L) {
     }
     lua_pop(L, 1);
     
+    lua_getfield(L, 1, "_cached");
+    if (lua_isboolean(L, -1)) {
+        realm_config_set_cached(config, lua_toboolean(L, -1));
+    }
+    lua_pop(L, 1);
+    
     if (sync_config) {
         realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_ADDITIVE_EXPLICIT);
     } else {
+        // TODO?: add ability to change this through config object? 
         realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_SOFT_RESET_FILE); // delete realm file if there are schema conflicts
+    }
+
+    if (realm_scheduler_t** scheduler = static_cast<realm_scheduler_t**>(luaL_checkudata(L, 2, RealmHandle))) {
+        realm_config_set_scheduler(config, *scheduler);
     }
 
     const realm_t** realm = static_cast<const realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));
@@ -143,10 +154,28 @@ static int _lib_realm_object_create(lua_State* L) {
 
     // Get arguments from stack
     realm_t** realm = (realm_t**)lua_touserdata(L, 1);
-    const int class_key = lua_tointeger(L, 2);
+    const int64_t class_key = lua_tointeger(L, 2);
 
     // Create object and feed it into the RealmObject handle
     *realm_object = realm_object_create(*realm, class_key); 
+    if (!*realm_object) {
+        // Exception ocurred when creating an object
+        return _inform_realm_error(L);
+    }
+    return 1;
+}
+
+static int _lib_realm_object_create_with_primary_key(lua_State* L) {
+    realm_object_t** realm_object = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
+    luaL_setmetatable(L, RealmHandle);
+    realm_t** realm = (realm_t**)lua_touserdata(L, 1);
+    const int class_key = lua_tointeger(L, 2);
+    std::optional<realm_value_t> pk = lua_to_realm_value(L, 3);
+    if (!pk){
+        // No corresponding realm value found
+        return 0;
+    }
+    *realm_object = realm_object_create_with_primary_key(*realm, class_key, *pk); 
     if (!*realm_object) {
         // Exception ocurred when creating an object
         return _inform_realm_error(L);
@@ -158,10 +187,10 @@ static int _lib_realm_set_value(lua_State* L) {
     // Get arguments from stack
     realm_t** realm = (realm_t**)lua_touserdata(L, 1);
     realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 2);
-    const int property_key = lua_tointeger(L, 3);
+    realm_property_key_t& property_key = *(static_cast<realm_property_key_t*>(lua_touserdata(L, 3)));
 
     // Translate the lua value into corresponding realm value
-    std::optional<realm_value> value = lua_to_realm_value(L, 4);
+    std::optional<realm_value_t> value = lua_to_realm_value(L, 4);
     if (!value){
         // No corresponding realm value found
         return 0;
@@ -178,7 +207,7 @@ static int _lib_realm_get_value(lua_State* L) {
     // Get arguments from stack
     realm_t** realm = (realm_t**)lua_touserdata(L, 1);
     realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 2);
-    const int property_key = lua_tointeger(L, 3);
+    realm_property_key_t& property_key = *(static_cast<realm_property_key_t*>(lua_touserdata(L, 3)));
 
     realm_value_t out_value;
     if (!realm_get_value(*realm_object, property_key, &out_value)) {
@@ -187,7 +216,22 @@ static int _lib_realm_get_value(lua_State* L) {
     }
 
     // Push correct lua value based on Realm type
-    return realm_to_lua_value(L, out_value);
+    return realm_to_lua_value(L, *realm, out_value);
+}
+
+static int _lib_realm_object_delete(lua_State* L) {
+    realm_object_t **object = (realm_object_t**)lua_touserdata(L, 1);
+    if (realm_object_delete(*object)){
+        return 0;
+    } else {
+        return _inform_realm_error(L);
+    }
+}
+
+static int _lib_realm_object_is_valid(lua_State* L) {
+    realm_object_t **object = (realm_object_t**)lua_touserdata(L, 1);
+    lua_pushboolean(L, realm_object_is_valid(*object));
+    return 1; 
 }
 
 static int _lib_realm_object_get_all(lua_State* L) {
@@ -206,9 +250,13 @@ static int _lib_realm_object_get_all(lua_State* L) {
         return _inform_error(L, "Unable to find collection");
     }
 
-    // Push result onto stack
-    realm_results_t **result = static_cast<realm_results_t**>(lua_newuserdata(L, sizeof(realm_results_t*)));
-    *result = realm_object_find_all(*realm, class_info.key);
+    // Push results onto stack
+    realm_results_t **results = static_cast<realm_results_t**>(lua_newuserdata(L, sizeof(realm_results_t*)));
+    *results = realm_object_find_all(*realm, class_info.key);
+
+    // Set the metatable of the results (top of stack) to that
+    // of RealmHandle in order for it to be released via __gc.
+    luaL_setmetatable(L, RealmHandle);
 
     return 1;
 }
@@ -217,12 +265,14 @@ static int _lib_realm_results_get(lua_State* L) {
     // Get arguments from stack
     realm_results_t **realm_results = (realm_results_t **)lua_touserdata(L, 1);
     int index = lua_tointeger(L, 2);
-    
-    // Setup return value which is a realm_object
-    realm_object_t **object = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
 
-    // Fetch object
+    // Push realm object onto stack
+    realm_object_t **object = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
     *object = realm_results_get_object(*realm_results, index);
+
+    // Set the metatable of the object (top of stack) to that
+    // of RealmHandle in order for it to be released via __gc.
+    luaL_setmetatable(L, RealmHandle);
 
     return 1;
 }
@@ -238,78 +288,6 @@ static int _lib_realm_results_count(lua_State* L) {
     
     // TODO: size_t: typedef unsigned long size_t. (Change from lua_pushinteger?)
     lua_pushinteger(L, count);
-
-    return 1;
-}
-
-static int _lib_realm_results_add_listener(lua_State* L) {
-    // Get 1st argument (results/collection) from stack
-    realm_results_t** results = (realm_results_t**)lua_touserdata(L, 1);
-    
-    // Pop 2nd argument/top of stack (the Lua function) from the stack and save a
-    // reference to it in the register. "callback_reference" is the register location.
-    int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
-
-    // Create a pointer to userdata for use in the callback that will be
-    // invoked at a later time.
-    realm_lua_userdata* userdata = new realm_lua_userdata;
-    userdata->L = L;
-    userdata->callback_reference = callback_reference;
-
-    // Put the notification token on the stack.
-    auto** notification_token = static_cast<realm_notification_token_t**>(lua_newuserdata(L, sizeof(realm_notification_token_t*)));
-    *notification_token = realm_results_add_notification_callback(
-        *results,
-        userdata,
-        free_userdata,
-        nullptr,
-        on_collection_change
-    );
-
-    // Set the metatable of the notification token (top of stack) to that
-    // of RealmHandle in order for it to be released via __gc.
-    luaL_setmetatable(L, RealmHandle);
-
-    if (!*notification_token) {
-        lua_pop(L, 1);
-        return _inform_realm_error(L);
-    }
-
-    return 1;
-}
-
-static int _lib_realm_object_add_listener(lua_State* L) {
-    // Get 1st argument (object) from the stack.
-    realm_object_t** object = (realm_object_t**)lua_touserdata(L, 1);
-
-    // Pop 2nd argument/top of stack (the Lua function) from the stack and save a
-    // reference to it in the register. "callback_reference" is the register location.
-    int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
-
-    // Create a pointer to userdata for use in the callback that will be
-    // invoked at a later time.
-    realm_lua_userdata* userdata = new realm_lua_userdata;
-    userdata->L = L;
-    userdata->callback_reference = callback_reference;
-
-    // Put the notification token on the stack.
-    auto** notification_token = static_cast<realm_notification_token_t**>(lua_newuserdata(L, sizeof(realm_notification_token_t*)));
-    *notification_token = realm_object_add_notification_callback(
-        *object,
-        userdata,
-        free_userdata,
-        nullptr,
-        on_object_change
-    );
-
-    // Set the metatable of the notification token (top of stack) to that
-    // of RealmHandle in order for it to be released via __gc.
-    luaL_setmetatable(L, RealmHandle);
-
-    if (!*notification_token) {
-        lua_pop(L, 1);
-        return _inform_realm_error(L);
-    }
 
     return 1;
 }
@@ -366,6 +344,85 @@ static int _lib_realm_results_filter(lua_State *L){
     }
     realm_results_t **result = static_cast<realm_results_t**>(lua_newuserdata(L, sizeof(realm_results_t*)));
     *result = realm_results_filter(*unfiltered_result, query);
+
+    // Set the metatable of the results (top of stack) to that
+    // of RealmHandle in order for it to be released via __gc.
+    luaL_setmetatable(L, RealmHandle);
+
+    return 1;
+}
+
+
+static int _lib_realm_list_insert(lua_State *L){
+    std::optional<realm_value_t> value = lua_to_realm_value(L, 3);
+    if (!value){
+        _inform_error(L, "No corresponding realm value found");
+        return 0;
+    }
+
+    // If index is larger than size of list we invoke insert to append on the last place, otherwise set is called
+    // Get values from lua stack
+    realm_list_t **realm_list = (realm_list_t**)lua_touserdata(L, 1);
+    size_t index = lua_tointeger(L, 2);
+
+    // Get size of list 
+    size_t out_size;
+    if (!realm_list_size(*realm_list, &out_size)){
+        return _inform_realm_error(L);
+    }
+
+    // Call correct insert function
+    bool success;
+    if (index == out_size){
+        success = realm_list_insert(*realm_list, index, *value);
+    } else if(index < out_size){
+        success = realm_list_set(*realm_list, index, *value);
+    } else {
+        return _inform_error(L, "Index out of bounds when setting value in list");
+    }
+    if (!success){
+        return _inform_realm_error(L);
+    }
+    return 0;
+}
+
+static int _lib_realm_list_get(lua_State *L){
+    // Get values from lua stack
+    realm_list_t** realm_list = (realm_list_t**)lua_touserdata(L, 1);
+    realm_t** realm = (realm_t**)lua_touserdata(L, 2);
+    size_t index = lua_tointeger(L, 3);
+
+    // Get value from list 
+    realm_value_t out_value;
+    if (!realm_list_get(*realm_list, index, &out_value)){
+        return _inform_realm_error(L);
+    }
+
+    // return corresponding lua value
+    return realm_to_lua_value(L, *realm, out_value);
+}
+
+static int _lib_realm_list_size(lua_State *L){
+    // Get values from lua stack
+    realm_list_t** realm_list = (realm_list_t**)lua_touserdata(L, 1);
+
+    // Get size of list 
+    size_t out_size;
+    if (!realm_list_size(*realm_list, &out_size)){
+        return _inform_realm_error(L);
+    }
+
+    // Put size on lua stack
+    lua_pushinteger(L, out_size);
+    return 1;
+}
+
+static int _lib_realm_get_list(lua_State *L){
+    realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 1);
+    realm_property_key_t& property_key = *(static_cast<realm_property_key_t*>(lua_touserdata(L, 2)));
+    realm_list_t** realm_list = static_cast<realm_list_t**>(lua_newuserdata(L, sizeof(realm_list_t*)));
+    *realm_list = realm_get_list(*realm_object, property_key);
+    luaL_setmetatable(L, RealmHandle);
     return 1;
 }
 
@@ -383,29 +440,33 @@ static const luaL_Reg lib[] = {
   {"realm_commit_transaction",                  _lib_realm_commit_transaction},
   {"realm_cancel_transaction",                  _lib_realm_cancel_transaction},
   {"realm_object_create",                       _lib_realm_object_create},
+  {"realm_object_create_with_primary_key",      _lib_realm_object_create_with_primary_key},
+  {"realm_object_delete",                       _lib_realm_object_delete},
   {"realm_set_value",                           _lib_realm_set_value},
   {"realm_get_value",                           _lib_realm_get_value},
+  {"realm_object_is_valid",                     _lib_realm_object_is_valid},
   {"realm_object_get_all",                      _lib_realm_object_get_all},
   {"realm_object_add_listener",                 _lib_realm_object_add_listener},
   {"realm_results_get",                         _lib_realm_results_get},
   {"realm_results_count",                       _lib_realm_results_count},
   {"realm_results_add_listener",                _lib_realm_results_add_listener},
   {"realm_results_filter",                      _lib_realm_results_filter},
+  {"realm_list_insert",                         _lib_realm_list_insert},
+  {"realm_list_get",                            _lib_realm_list_get},
+  {"realm_list_size",                           _lib_realm_list_size},
+  {"realm_get_list",                            _lib_realm_get_list},
   {NULL, NULL}
 };
 
-void realm_lib_open(lua_State* L) {
-    // see linit.c from the Lua source code
-    luaL_getsubtable(L, LUA_REGISTRYINDEX, LUA_PRELOAD_TABLE);
-    lua_pushcfunction(L, [](lua_State* L) {
-        luaL_newlib(L, lib);
-        return 1;
-    });
-    lua_setfield(L, -2, "_realm_native");
-    lua_pop(L, 1);
-
+extern "C" int luaopen_realm_native(lua_State* L) {
+    const luaL_Reg realm_handle_funcs[] = {
+        {"__gc", _lib_realm_release},
+        {NULL, NULL}
+    };
     luaL_newmetatable(L, RealmHandle);
-    lua_pushstring(L, "__gc");
-    lua_pushcfunction(L, &_lib_realm_release);
-    lua_settable(L, -3);
+    luaL_setfuncs(L, realm_handle_funcs, 0);
+    lua_pop(L, 1); // pop the RealmHandle metatable off the stack
+
+    luaL_newlib(L, lib);
+    return 1;
 }

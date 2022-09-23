@@ -1,3 +1,3 @@
 #include <lua.hpp>
 
-void realm_lib_open(lua_State*);
+extern "C" int luaopen_realm_native(lua_State*);

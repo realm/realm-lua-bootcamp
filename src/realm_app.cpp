@@ -76,7 +76,6 @@ int _lib_realm_app_create(lua_State* L) {
 
     realm_sync_client_config_t* sync_client_config = realm_sync_client_config_new();
     realm_sync_client_config_set_base_file_path(sync_client_config, std::filesystem::current_path().c_str());
-    realm_sync_client_config_set_log_level(sync_client_config, RLM_LOG_LEVEL_DEBUG);
 
     // for production this has to provide an explicit encryption key
     realm_sync_client_config_set_metadata_mode(sync_client_config, RLM_SYNC_CLIENT_METADATA_MODE_PLAINTEXT);

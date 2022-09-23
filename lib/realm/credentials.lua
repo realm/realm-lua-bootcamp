@@ -1,4 +1,4 @@
-local native = require "_realm_native"
+local native = require "realm.native"
 
 ---@class RealmCredentials
 ---@field _handle userdata The realm credentials userdata.

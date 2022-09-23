@@ -1,6 +1,16 @@
+---@diagnostic disable: undefined-field
+local uv = require "luv"
 local Realm = require "realm"
+require "realm.scheduler.libuv"
 local RealmApp = require "realm.app"
 local RealmCredentials = require "realm.credentials"
+
+local signal = uv.new_signal()
+signal:start("sigint", function()
+  print("\nReceived interrupt signal. Exiting.")
+  uv.stop()
+end)
+signal:unref()
 
 function coroutine.resumeThrowable(co, val1, ...)
     local results = table.pack(coroutine.resume(co, val1, ...))
@@ -16,7 +26,7 @@ end
 local APP_ID = "application-0-oltdi"
 local app = RealmApp.new({ appId = APP_ID })
 local currentUser = app:currentUser()
-local realmSync
+local realmSync --- @type Realm
 
 local coroutineOpenRealm = coroutine.create(function ()
     realmSync = Realm.open({
@@ -35,8 +45,8 @@ local coroutineOpenRealm = coroutine.create(function ()
         sync = {
             user = currentUser,
             -- Sync all the stores with partition key ("city") set to "Chicago".
+            -- the partition value is the raw Extended JSON string (Lua does not have a BSON package)
             partitionValue = "\"Chicago\""
-            -- NOTE: There are more sync config props that could be set.
         }
     })
 end)
@@ -70,142 +80,56 @@ else
     registerAndLogIn("jane@example.com", "123456")
 end
 
-if realmSync then
-    local storeA
-    local storeB
-    local storeC
-    realmSync:write(function()
-        -- Create objects that should sync (city = "Chicago")
-        storeA = realmSync:create("StoreSync")
-        storeA._id = math.random(1, 100000)
-        storeA.city = "Chicago"
-        storeA.numEmployees = 10
-        assert(storeA)
-        assert(storeA.city == "Chicago", "'city' property does not match expected.")
-        assert(storeA.numEmployees == 10, "'numEmployees' property does not match expected.")
+realmSync:write(function()
+    -- Create objects that should sync (city = "Chicago")
+    local storeA = realmSync:create("StoreSync", {
+        _id = math.random(1, 100000),
+        city = "Chicago",
+        numEmployees = 10
+    })
+    assert(storeA)
+    assert(storeA.city == "Chicago", "'city' property does not match expected.")
+    assert(storeA.numEmployees == 10, "'numEmployees' property does not match expected.")
 
-        storeB = realmSync:create("StoreSync")
-        storeB._id = math.random(1, 100000)
-        storeB.city = "Chicago"
-        storeB.numEmployees = 10
-        assert(storeB)
-        assert(storeB.city == "Chicago", "'city' property does not match expected.")
-        assert(storeB.numEmployees == 10, "'numEmployees' property does not match expected.")
+    local storeB = realmSync:create("StoreSync", {
+        _id = math.random(1, 100000),
+        city = "Chicago",
+        numEmployees = 20
+    })
+    assert(storeB)
+    assert(storeB.city == "Chicago", "'city' property does not match expected.")
+    assert(storeB.numEmployees == 20, "'numEmployees' property does not match expected.")
 
-        -- Create object that should not sync (city != "Chicago")
-        storeC = realmSync:create("StoreSync")
-        storeB._id = math.random(1, 100000)
-        storeC.city = "Austin"
-        storeC.numEmployees = 10
-        assert(storeC)
-        assert(storeC.city == "Austin", "'city' property does not match expected.")
-        assert(storeC.numEmployees == 10, "'numEmployees' property does not match expected.")
-    end)
-
-    -- TODO: Add listener to an obejct
-
-    local stores
-    realmSync:write(function()
-        stores = realmSync:objects("StoreSync")
-        assert(stores)
-        assert(#stores == 2, "Number of sync stores does not match expected.")
-    end)
-
-    -- TODO: Add listener to a collection
-end
-
-
--- EXAMPLE NON-SYNC USAGE: --
-
----@class Person
----@field name string
----@field age integer
-
-local realm = Realm.open({
-    path = "./bootcamp.realm",
-    schemaVersion = 0,
-    schema = {
-        {
-            name = "Person",
-            properties = {
-                name = "string",
-                age = "int"
-            }
-        }
-    }
-})
-
----@class RealmCollectionChanges
----@field deletions table<number, number>
----@field insertions table<number, number>
----@field modificationsOld table<number, number>
----@field modificationsNew table<number, number>
-
----@param persons RealmResults
----@param changes RealmCollectionChanges
-local function onPersonsChange(persons, changes)
-    print("Reacting to Person collection changes..")
-
-    for _, deletionIndex in ipairs(changes.deletions) do
-        print("Deletion:", "index:", deletionIndex)
-    end
-
-    for _, insertionIndex in ipairs(changes.insertions) do
-        print("Insertion:", "name:", persons[insertionIndex].name, "age:", persons[insertionIndex].age)
-    end
-
-    for _, modificationIndexNew in ipairs(changes.modificationsNew) do
-        print("Modification:", "name:", persons[modificationIndexNew].name, "age:", persons[modificationIndexNew].age)
-    end
-end
-
----@class RealmObjectChanges
----@field isDeleted boolean
----@field modifiedProperties table<number, number>  -- NOTE: Will change to table<number, string>
-
----@param person RealmObject
----@param changes RealmObjectChanges
-local function onPersonChange(person, changes)
-    print("Reacting to Person object changes...")
-
-    if (changes.isDeleted) then
-        print("The person was deleted.")
-        return
-    end
-
-    for _, prop in ipairs(changes.modifiedProperties) do
-        -- TODO:
-        -- We're currently just receiving the prop key as an int (typedef int64_t realm_property_key_t)
-        print("prop:", prop)
-
-        -- But we should receive the string property names so that we can write: person[prop]
-        -- print("Modification:", "Modified prop:", prop, "New value:", person[prop])
-
-        -- Would be good to have the corresponding names cached on the Lua side so that we don't
-        -- need to loop the property keys in CPP and call the C API each time the object changes.
-    end
-end
-
-local persons = realm:objects("Person")
-
--- NOTE: Consume the return value in order to not be garbage collected
-local personsCollectionNotificationToken = persons:addListener(onPersonsChange)
-print("Collection notification token:", personsCollectionNotificationToken)
-
-local testPerson
-realm:write(function()
-    testPerson = realm:create("Person")
-    testPerson.name = "Jacob"
-    testPerson.age = 1337
-    return 0
+    -- Create object that should not sync (city != "Chicago")
+    -- Generates a BadChangeset error
+    -- local storeC = realmSync:create("StoreSync", {
+    --     _id = math.random(1, 100000),
+    --     city = "Austin",
+    --     numEmployees = 5
+    -- })
+    -- assert(storeC)
+    -- assert(storeC.city == "Austin", "'city' property does not match expected.")
+    -- assert(storeC.numEmployees == 10, "'numEmployees' property does not match expected.")
 end)
 
--- NOTE: Consume the return value in order to not be garbage collected
-local personObjectNotificationToken = testPerson:addListener(onPersonChange)
-print("Object notification token:", personObjectNotificationToken)
+local stores = realmSync:objects("StoreSync")
+local t1 = stores:addListener(function (collection, changes)
+    for _, index in ipairs(changes.insertions) do
+        print("Added Store with id "..collection[index]._id)
+    end
 
-local filteredPersons = persons:filter("name = $0 and age = $1", "Jacob", 1337)
-print("#filteredPersons:", #filteredPersons)
+    for _, index in ipairs(changes.deletions) do
+        print("Deleted store at index "..index)
+    end
+end)
 
--- TODO:
--- Deal with notification_token and use when closing a realm
+local firstStore = stores[1]
+print("Listening for object notifications on Store with id "..firstStore._id)
+local t2 = stores[1]:addListener(function (object, changes)
+    if #changes.modifiedProperties > 0 then
+        print("Modified Store with id "..object._id)
+    end
+end)
+
+print("Press Ctrl+C to exit")
+uv.run()

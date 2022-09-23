@@ -3,13 +3,16 @@ local classes = require "realm.classes"
 
 ---@module '.init'
 
----@class RealmObject
+---@class Realm.Object
 ---@field _handle userdata
 ---@field _realm Realm
 ---@field class Realm.Schema.ClassInformation
----@field addListener function
+---@field addListener fun(self: Realm.Object, cb: Realm.ObjectChanges.Callback) : Realm.Handle
 local RealmObject = {}
 
+---@param self Realm.Object
+---@param onObjectChange Realm.ObjectChanges.Callback
+---@return Realm.Handle Notification token
 local function addListener(self, onObjectChange)
     -- Create a listener that is passed to cpp which, when called, in turn calls
     -- the user's listener (onObjectChange). This makes it possible to pass the
@@ -17,14 +20,16 @@ local function addListener(self, onObjectChange)
     local function listener(changes)
         onObjectChange(self, changes)
     end
-    return native.realm_object_add_listener(self._handle, listener)
+    local notificationToken = native.realm_object_add_listener(self._handle, listener)
+    table.insert(self._realm._childHandles, notificationToken)
+    return notificationToken
 end
 
 ---@param realm Realm
 ---@param classInfo Realm.Schema.ClassInformation
 ---@param values table<string, any>?
 ---@param handle userdata?
----@return RealmObject 
+---@return Realm.Object 
 function RealmObject:new(realm, classInfo, values, handle)
     local noPrimaryKey = (classInfo.primaryKey == nil or classInfo.primaryKey == '')
     local hasValues = values ~= nil
@@ -33,7 +38,7 @@ function RealmObject:new(realm, classInfo, values, handle)
         if (noPrimaryKey) then
             handle = native.realm_object_create(realm._handle, classInfo.key)
         else
-            if not hasValues then
+            if not hasValues or values[classInfo.primaryKey] == nil then
                 error("Primary key not set at declaration")
                 return {}
             end

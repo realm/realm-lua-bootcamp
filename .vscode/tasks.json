@@ -1,0 +1,54 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "command": "${workspaceFolder}/luarocks",
+            "args": [
+                "make"
+            ],
+            "problemMatcher": ["$gcc", "$msCompile"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+        },
+        {
+            "label": "test",
+            "command": "${workspaceFolder}/luarocks",
+            "args": [
+                "test"
+            ],
+            "options": {
+                "env": {
+                    "LUA_PATH": "${workspaceFolder}/lua_modules/share/lua/5.4/?.lua",
+                    "LUA_CPATH": "${workspaceFolder}/lua_modules/lib/lua/5.4/?.so"
+                }
+            },
+            "dependsOn": [
+                "build"
+            ]
+        },
+        {
+            "type": "shell",
+            "label": "build-deps",
+            "command": "${workspaceFolder}/luarocks",
+            "args": [
+                "make",
+                "--deps-only"
+            ],
+            "dependsOn": [
+                "test-deps"
+            ]
+        },
+        {
+            "type": "shell",
+            "label": "test-deps",
+            "command": "${workspaceFolder}/luarocks",
+            "args": [
+                "test",
+                "--prepare"
+            ],
+        },
+    ]
+}

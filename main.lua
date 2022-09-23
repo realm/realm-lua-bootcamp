@@ -1,5 +1,7 @@
 ---@diagnostic disable: undefined-field
+local uv = require "luv"
 local Realm = require "realm"
+require "realm.scheduler.libuv"
 
 ---@class Person
 ---@field name string
@@ -36,118 +38,13 @@ local realm = Realm.open({
     }
 })
 
----@class RealmCollectionChanges
----@field deletions table<number, number>
----@field insertions table<number, number>
----@field modificationsOld table<number, number>
----@field modificationsNew table<number, number>
-
----@param persons RealmResults
----@param changes RealmCollectionChanges
-local function onPersonsChange(persons, changes)
-    print("Reacting to Person collection changes..")
-
-    for _, deletionIndex in ipairs(changes.deletions) do
-        print("Deletion:", "index:", deletionIndex)
-    end
-
-    for _, insertionIndex in ipairs(changes.insertions) do
-        print("Insertion:", "name:", persons[insertionIndex].name, "age:", persons[insertionIndex].age)
-    end
-
-    for _, modificationIndexNew in ipairs(changes.modificationsNew) do
-        print("Modification:", "name:", persons[modificationIndexNew].name, "age:", persons[modificationIndexNew].age)
-    end
+local function assertRealmHandle(handle, message)
+    assert(getmetatable(handle).__name == "_realm_handle", message)
 end
 
----@class RealmObjectChanges
----@field isDeleted boolean
----@field modifiedProperties table<number, number>  -- NOTE: Will change to table<number, string>
+-------------------- TESTING REFERENCES FEATURES -------------------- 
+print("Testing references...")
 
----@param person RealmObject
----@param changes RealmObjectChanges
-local function onPersonChange(person, changes)
-    print("Reacting to Person object changes...")
-
-    if (changes.isDeleted) then
-        print("The person was deleted.")
-        return
-    end
-
-    for _, prop in ipairs(changes.modifiedProperties) do
-        -- TODO:
-        -- We're currently just receiving the prop key as an int (typedef int64_t realm_property_key_t)
-        print("prop:", prop)
-
-        -- But we should receive the string property names so that we can write: person[prop]
-        -- print("Modification:", "Modified prop:", prop, "New value:", person[prop])
-
-        -- Would be good to have the corresponding names cached on the Lua side so that we don't
-        -- need to loop the property keys in CPP and call the C API each time the object changes.
-    end
-end
-
-local persons = realm:objects("Person")
-
--- NOTE: Consume the return value in order to not be garbage collected
-local personsCollectionNotificationToken = persons:addListener(onPersonsChange)
-print("Collection notification token:", personsCollectionNotificationToken)
-
-local testPerson
-realm:write(function()
-    testPerson = realm:create("Person", {name = "Jacob", age = 1337})
-    local pet = realm:create("Pet", { name = "Turtle"})
-    local pet2 = realm:create("Pet", { name = "Turtle2"})
-    -- NOTE for now we only support insertions at the end of the list
-    table.insert(testPerson.pets, pet)
-    table.insert(testPerson.pets, pet2)
-    return 0
-end)
-
--- tests _lib_realm_list_get
-local petList = testPerson.pets
-
-print("testPerson first pet: ", petList[1].name)
-print("testPerson number of pets: ", #petList)
-
--- NOTE: Consume the return value in order to not be garbage collected
-local personObjectNotificationToken = testPerson:addListener(onPersonChange)
-print("Object notification token:", personObjectNotificationToken)
-
-local filteredPersons = persons:filter("name = $0 and age = $1", "Jacob", 1337)
-print("#filteredPersons:", #filteredPersons)
-
-local filteredPerson = filteredPersons[1]
-realm:write(function()
-    --update created person, works due to live objects
-    filteredPerson.name = "John"
-    filteredPerson.age = 42
-    return 0
-end)
-print("filteredperson name", filteredPerson.name)
-print("filteredperson age:", filteredPerson.age)
-
-realm:write(function()
-    realm:delete(testPerson)
-    return 0
-end)
-
-if not realm:isValid(testPerson) then
-    print("Object was successfully deleted")
-end
-
--- NOTE: Uncomment to test PK functionality, could be annoying to have since it will throw an error if run multiple times
--- local testPerson2
--- realm:write(function()
---     testPerson2 = realm:create("Person2", {name = "pk9", age = 1337})
---     return 0
--- end)
--- print("testPerson2 name: ", testPerson2.name)
-
--- TODO:
--- Deal with notification_token and use when closing a realm
-
--- TEST REFERENCES
 realm:write(function()
     local personWithACat = realm:create("Person")
     assert(personWithACat)
@@ -163,8 +60,147 @@ realm:write(function()
     assert(personWithACat.pet.name == "Mongo", "Referenced object must match reference properties")
     cat.category = "Cat"
     assert(personWithACat.pet.category == "Cat", "Updating referenced object must match reference")
-    
+
     personWithACat.pet.category = "Dog"
     assert(cat.category == "Dog", "Updating reference must match referenced object")
+
+    realm:delete(personWithACat)
+    realm:delete(cat)
+end)
+
+-------------------- TESTING FILTER FEATURES -------------------- 
+print("Testing filter features...")
+local trackedPersons = realm:objects("Person")
+local randomAge = math.random(1, 1000)
+local filteredPersons = trackedPersons:filter("age = $0", randomAge)
+local testPersonA
+local testPersonB
+
+realm:write(function ()
+    testPersonA = realm:create("Person", {name = "Jacob", age = randomAge})
+    testPersonB = realm:create("Person", {name = "Mongo", age = randomAge})
+end)
+
+if #filteredPersons ~= 2 then
+    error("Only 2 specified persons must be caught by filter, instead got " .. #filteredPersons ..
+    ". Please try re-running or deleting your bootcamp.realm file.");
+    return
+end
+
+local filteredPersonsSpecific = trackedPersons:filter("name = $0 and age = $1", "Jacob", randomAge)
+local filteredPerson = filteredPersonsSpecific[1]
+realm:write(function()
+    --update created person, works due to live objects
+    filteredPerson.name = "John"
+    filteredPerson.age = 42
     return 0
 end)
+
+assert(filteredPerson.name == "John", "Filter changes to name must be updated")
+assert(filteredPerson.age == 42, "Filter changes to age must be updated")
+
+realm:write(function()
+    realm:delete(testPersonA)
+    realm:delete(testPersonB)
+    return 0
+end)
+
+assert(not realm:isValid(testPersonA), "Filtered object must be properly deleted")
+-- -------------------- TESTING PRIMARY KEY FEATURES -------------------- 
+print("Testing primary key features...")
+realm:write(function()
+    testPersonA = realm:create("Person2", {name = "pk3", age = 1337})
+    assert(not pcall(function()
+        testPersonB = realm:create("Person2", {name = "H" .. randomAge, age = 2000})
+    end), "Function must throw error when object with same primary key is created")
+    realm:delete(testPersonA)
+    return 0
+end)
+
+-------------------- TESTING OBJECT CHANGE NOTIFICATIONS -------------------- 
+---@type Realm.ObjectChanges
+local personObjectChanges
+local trackedPerson
+local collectionChangeTest
+
+local objectCallbackTester = coroutine.create(function ()
+    realm:write(function()
+        trackedPerson.name = "Woo"
+    end)
+    coroutine.yield()
+
+    assert(#personObjectChanges.modifiedProperties == 1, "Only one property must have been changed")
+    realm:write(function()
+        trackedPerson.name = "Yeah"
+        trackedPerson.age = 100
+    end)
+    coroutine.yield()
+
+    assert(#personObjectChanges.modifiedProperties == 2, "Only two properties must have been changed")
+    realm:write(function()
+        realm:delete(trackedPerson)
+    end)
+    coroutine.yield()
+    -- Start the collection change test
+    collectionChangeTest()
+end)
+
+realm:write(function()
+    print("Testing object changes...")
+    trackedPerson = realm:create("Person", {name = "Jacob", age = 1337})
+end)
+
+---@type Realm.ObjectChanges.Callback
+local function onPersonChange(person, changes)
+    assert(person._handle == trackedPerson._handle, "Object changes must return reference to correct object")
+    personObjectChanges = changes
+    assert(coroutine.resume(objectCallbackTester))
+end
+
+-- NOTE: Consume the return value in order to not be garbage collected
+local objectNotificationToken = trackedPerson:addListener(onPersonChange)
+assertRealmHandle(objectNotificationToken, "Object notification token must be a Realm Handle")
+
+
+-------------------- TESTING COLLECTION CHANGE NOTIFICATIONS --------------------
+-- Will be run only after the object change test is complete
+collectionChangeTest = function()
+    local trackedPets = realm:objects("Pet")
+    print("Testing collection changes...")
+    ---@type Realm.CollectionChanges
+    local personCollectionChanges
+
+    local collectionCallbackTester = coroutine.create(function ()
+        local newCat;
+        local newDog;
+        realm:write(function()
+            newCat = realm:create("Pet", {category = "Cat"})
+            newDog = realm:create("Pet", {name = "Buddy", category = "Dog"})
+        end)
+        coroutine.yield()
+
+        assert(#personCollectionChanges.insertions == 2, "Only 1 insertion should be reported")
+        assert(#personCollectionChanges.modificationsNew == 0, "0 modifications should be reported")
+        assert(#personCollectionChanges.deletions == 0, "0 deletions should be reported")
+
+        realm:write(function()
+            newCat.name = "Mono"
+            realm:delete(newDog)
+        end)
+        coroutine.yield()
+
+        assert(#personCollectionChanges.insertions == 0, "0 insertion should be reported")
+        assert(#personCollectionChanges.modificationsNew == 1, "Only 1 modifications should be reported")
+        assert(#personCollectionChanges.deletions == 1, "Only 1 deletion should be reported")
+    end)
+
+    ---@see Realm.CollectionChanges.Callback
+    local function onPersonsChange(persons, changes)
+        personCollectionChanges = changes
+        assert(coroutine.resume(collectionCallbackTester))
+    end
+
+    local collectionNotificationToken = trackedPets:addListener(onPersonsChange)
+    assertRealmHandle(collectionNotificationToken, "Collection notification token must be a Realm Handle")
+    print("All tests passed!")
+end

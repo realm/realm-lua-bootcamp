@@ -42,7 +42,7 @@ std::optional<realm_value_t> lua_to_realm_value(lua_State* L, int arg_index){
             .link = realm_object_as_link(*realm_object)
         };
     } else {
-        _inform_error(L, "Uknown Lua type");
+        _inform_error(L, "Uknown Lua type: %1", lua_typename(L, lua_type(L, arg_index)));
         return std::nullopt;
     }
 }
@@ -72,6 +72,11 @@ int realm_to_lua_value(lua_State* L, realm_t* realm, realm_value_t value){
         realm_object_t* object = realm_get_object(realm, value.link.target_table, value.link.target);
         realm_object_t** realm_object_pointer = static_cast<realm_object_t**>(lua_newuserdata(L, sizeof(realm_object_t*)));
         *realm_object_pointer = object;
+
+        // Set the metatable of the results (top of stack) to that
+        // of RealmHandle in order for it to be released via __gc.
+        luaL_setmetatable(L, RealmHandle);
+        
         lua_pushinteger(L, value.link.target_table);
         return 2;
     }

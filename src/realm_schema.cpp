@@ -8,15 +8,6 @@
 #include "realm_util.hpp"
 #include "realm_schema.hpp"
 
-// Checks whether given fullString ends with ending 
-bool ends_with (const std::string_view& full_string, const std::string_view& ending) {
-    if (full_string.length() >= ending.length()) {
-        return (0 == full_string.compare (full_string.length() - ending.length(), ending.length(), ending));
-    } else {
-        return false;
-    }
-}
-
 static void _parse_property_type(lua_State* L, realm_property_info_t& prop, std::string_view type, std::deque<std::string>& strings) {
     if (!type.size()) {
         _inform_error(L, "");

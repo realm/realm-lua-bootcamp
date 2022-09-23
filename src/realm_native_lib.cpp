@@ -26,16 +26,25 @@ static int _lib_realm_open(lua_State* L) {
     lua_getfield(L, 1, "path");
     luaL_checkstring(L, -1);
     realm_config_set_path(config, lua_tostring(L, -1));
+    lua_pop(L, 1);
 
     lua_getfield(L, 1, "schemaVersion");
     luaL_checkinteger(L, -1);
     realm_config_set_schema_version(config, lua_tointeger(L, -1));
     // TODO?: add ability to change this through config object? 
     realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_SOFT_RESET_FILE); // delete realm file if there are schema conflicts
-
-    // Pop both fields.
-    lua_pop(L, 2);
+    lua_pop(L, 1);
     
+    lua_getfield(L, 1, "_cached");
+    if (lua_isboolean(L, -1)) {
+        realm_config_set_cached(config, lua_toboolean(L, -1));
+    }
+    lua_pop(L, 1);
+
+    if (realm_scheduler_t** scheduler = static_cast<realm_scheduler_t**>(luaL_checkudata(L, 2, RealmHandle))) {
+        realm_config_set_scheduler(config, *scheduler);
+    }
+
     const realm_t** realm = static_cast<const realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));
     luaL_setmetatable(L, RealmHandle);
     *realm = realm_open(config);
@@ -234,78 +243,6 @@ static int _lib_realm_results_count(lua_State* L) {
     return 1;
 }
 
-static int _lib_realm_results_add_listener(lua_State* L) {
-    // Get 1st argument (results/collection) from stack
-    realm_results_t** results = (realm_results_t**)lua_touserdata(L, 1);
-    
-    // Pop 2nd argument/top of stack (the Lua function) from the stack and save a
-    // reference to it in the register. "callback_reference" is the register location.
-    int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
-
-    // Create a pointer to userdata for use in the callback that will be
-    // invoked at a later time.
-    realm_lua_userdata* userdata = new realm_lua_userdata;
-    userdata->L = L;
-    userdata->callback_reference = callback_reference;
-
-    // Put the notification token on the stack.
-    auto** notification_token = static_cast<realm_notification_token_t**>(lua_newuserdata(L, sizeof(realm_notification_token_t*)));
-    *notification_token = realm_results_add_notification_callback(
-        *results,
-        userdata,
-        free_userdata,
-        nullptr,
-        on_collection_change
-    );
-
-    // Set the metatable of the notification token (top of stack) to that
-    // of RealmHandle in order for it to be released via __gc.
-    luaL_setmetatable(L, RealmHandle);
-
-    if (!*notification_token) {
-        lua_pop(L, 1);
-        return _inform_realm_error(L);
-    }
-
-    return 1;
-}
-
-static int _lib_realm_object_add_listener(lua_State* L) {
-    // Get 1st argument (object) from the stack.
-    realm_object_t** object = (realm_object_t**)lua_touserdata(L, 1);
-
-    // Pop 2nd argument/top of stack (the Lua function) from the stack and save a
-    // reference to it in the register. "callback_reference" is the register location.
-    int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
-
-    // Create a pointer to userdata for use in the callback that will be
-    // invoked at a later time.
-    realm_lua_userdata* userdata = new realm_lua_userdata;
-    userdata->L = L;
-    userdata->callback_reference = callback_reference;
-
-    // Put the notification token on the stack.
-    auto** notification_token = static_cast<realm_notification_token_t**>(lua_newuserdata(L, sizeof(realm_notification_token_t*)));
-    *notification_token = realm_object_add_notification_callback(
-        *object,
-        userdata,
-        free_userdata,
-        nullptr,
-        on_object_change
-    );
-
-    // Set the metatable of the notification token (top of stack) to that
-    // of RealmHandle in order for it to be released via __gc.
-    luaL_setmetatable(L, RealmHandle);
-
-    if (!*notification_token) {
-        lua_pop(L, 1);
-        return _inform_realm_error(L);
-    }
-
-    return 1;
-}
-
 static realm_query_t* _lib_realm_query_parse(lua_State* L, realm_t *realm, const char* class_name, const char* query_string, size_t num_args, size_t lua_arg_offset) {
     // Value which keeps track of the start location of arguments on the stack
     int arg_index;
@@ -465,18 +402,15 @@ static const luaL_Reg lib[] = {
   {NULL, NULL}
 };
 
-void realm_lib_open(lua_State* L) {
-    // see linit.c from the Lua source code
-    luaL_getsubtable(L, LUA_REGISTRYINDEX, LUA_PRELOAD_TABLE);
-    lua_pushcfunction(L, [](lua_State* L) {
-        luaL_newlib(L, lib);
-        return 1;
-    });
-    lua_setfield(L, -2, "_realm_native");
-    lua_pop(L, 1);
-
+extern "C" int luaopen_realm_native(lua_State* L) {
+    const luaL_Reg realm_handle_funcs[] = {
+        {"__gc", _lib_realm_release},
+        {NULL, NULL}
+    };
     luaL_newmetatable(L, RealmHandle);
-    lua_pushstring(L, "__gc");
-    lua_pushcfunction(L, &_lib_realm_release);
-    lua_settable(L, -3);
+    luaL_setfuncs(L, realm_handle_funcs, 0);
+    lua_pop(L, 1); // pop the RealmHandle metatable off the stack
+
+    luaL_newlib(L, lib);
+    return 1;
 }

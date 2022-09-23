@@ -33,9 +33,9 @@
 
 ---@enum PropertyInformation.Type
 local PropertyType = {
-    Int = 0,
-    Bool = 1,
-    String = 2,
+    INT = 0,
+    BOOL = 1,
+    STRING = 2,
     BINARY = 4,
     MIXED = 6,
     TIMESTAMP = 8,

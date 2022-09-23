@@ -368,16 +368,16 @@ static int _lib_realm_results_filter(lua_State *L){
 
 
 static int _lib_realm_list_insert(lua_State *L){
-    // If index is larger than size of list we invoke insert to append on the last place, otherwise set is called
-    // Get values from lua stack
-    realm_list_t **realm_list = (realm_list_t**)lua_touserdata(L, 1);
-    size_t index = lua_tointeger(L, 2);
     std::optional<realm_value_t> value = lua_to_realm_value(L, 3);
-
     if (!value){
         _inform_error(L, "No corresponding realm value found");
         return 0;
     }
+
+    // If index is larger than size of list we invoke insert to append on the last place, otherwise set is called
+    // Get values from lua stack
+    realm_list_t **realm_list = (realm_list_t**)lua_touserdata(L, 1);
+    size_t index = lua_tointeger(L, 2);
 
     // Get size of list 
     size_t out_size;
@@ -402,8 +402,8 @@ static int _lib_realm_list_insert(lua_State *L){
 
 static int _lib_realm_list_get(lua_State *L){
     // Get values from lua stack
-    realm_list_t **realm_list = (realm_list_t**)lua_touserdata(L, 1);
-    realm_t **realm = (realm_t**)lua_touserdata(L, 2);
+    realm_list_t** realm_list = (realm_list_t**)lua_touserdata(L, 1);
+    realm_t** realm = (realm_t**)lua_touserdata(L, 2);
     size_t index = lua_tointeger(L, 3);
 
     // Get value from list 
@@ -418,7 +418,7 @@ static int _lib_realm_list_get(lua_State *L){
 
 static int _lib_realm_list_size(lua_State *L){
     // Get values from lua stack
-    realm_list_t **realm_list = (realm_list_t**)lua_touserdata(L, 1);
+    realm_list_t** realm_list = (realm_list_t**)lua_touserdata(L, 1);
 
     // Get size of list 
     size_t out_size;
@@ -431,11 +431,10 @@ static int _lib_realm_list_size(lua_State *L){
     return 1;
 }
 
-RLM_API realm_list_t* realm_get_list(realm_object_t*, realm_property_key_t);
 static int _lib_realm_get_list(lua_State *L){
-    realm_object_t **realm_object = (realm_object_t**)lua_touserdata(L, 1);
+    realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 1);
     realm_property_key_t& property_key = *(static_cast<realm_property_key_t*>(lua_touserdata(L, 2)));
-    realm_list_t **realm_list = static_cast<realm_list_t**>(lua_newuserdata(L, sizeof(realm_results_t*)));
+    realm_list_t** realm_list = static_cast<realm_list_t**>(lua_newuserdata(L, sizeof(realm_list_t*)));
     *realm_list = realm_get_list(*realm_object, property_key);
     luaL_setmetatable(L, RealmHandle);
     return 1;

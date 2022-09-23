@@ -29,7 +29,7 @@ function RealmObject:new(realm, classInfo, values, handle)
     local noPrimaryKey = (classInfo.primaryKey == nil or classInfo.primaryKey == '')
     local hasValues = values ~= nil
     local hasHandle = handle ~= nil
-    if handle == nil then
+    if (not hasHandle) then
         if (noPrimaryKey) then
             handle = native.realm_object_create(realm._handle, classInfo.key)
         else

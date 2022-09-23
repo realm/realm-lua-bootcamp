@@ -19,14 +19,12 @@ function RealmList:new(realm ,handle, classInfo)
 end
 
 function RealmList:__index(key)
-    --for now it's assumed that we only get objects
+    -- TODO: for now it's assumed that we only get objects
     local handle = native.realm_list_get(self._handle, self._realm._handle, key - 1)
     return RealmObject:new(self._realm, self.class, {}, handle)
 end
 
 function RealmList:__newindex(index, value)
-    --set or insert???
-    --insert seems to match the default behaviour of lua but not sure...
     native.realm_list_insert(self._handle, index - 1, value._handle)
 end
 

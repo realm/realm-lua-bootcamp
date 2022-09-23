@@ -25,10 +25,11 @@ end
 local APP_ID = "application-0-oltdi"
 local app = App.new({ appId = APP_ID })
 local currentUser = app:currentUser()
-local realmSync --- @type Realm
+local realm --- @type Realm
 
 local coroutineOpenRealm = coroutine.create(function ()
-    realmSync = Realm.open({
+    assert(currentUser)
+    realm = Realm.open({
         schema = {
             {
                 name = "StoreSync",
@@ -79,9 +80,9 @@ else
     registerAndLogIn("jane@example.com", "123456")
 end
 
-realmSync:write(function()
+realm:write(function()
     -- Create objects that should sync (city = "Chicago")
-    local storeA = realmSync:create("StoreSync", {
+    local storeA = realm:create("StoreSync", {
         _id = math.random(1, 100000),
         city = "Chicago",
         numEmployees = 10
@@ -90,7 +91,7 @@ realmSync:write(function()
     assert(storeA.city == "Chicago", "'city' property does not match expected.")
     assert(storeA.numEmployees == 10, "'numEmployees' property does not match expected.")
 
-    local storeB = realmSync:create("StoreSync", {
+    local storeB = realm:create("StoreSync", {
         _id = math.random(1, 100000),
         city = "Chicago",
         numEmployees = 20
@@ -111,7 +112,7 @@ realmSync:write(function()
     -- assert(storeC.numEmployees == 10, "'numEmployees' property does not match expected.")
 end)
 
-local stores = realmSync:objects("StoreSync")
+local stores = realm:objects("StoreSync")
 local t1 = stores:addListener(function (collection, changes)
     for _, index in ipairs(changes.insertions) do
         print("Added Store with id "..collection[index]._id)

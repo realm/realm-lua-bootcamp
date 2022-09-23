@@ -31,7 +31,7 @@
 ---@alias Realm.CollectionChanges.Callback fun(results: Realm.Results, changes: Realm.CollectionChanges)
 
 ---@class Realm.Config.Sync
----@field user RealmUser The currently logged in user.
+---@field user Realm.App.User The currently logged in user.
 ---@field partitionValue string The value used for syncing objects with its partition key field set to this value.
 
 ---@class Realm.Schema.ClassInformation Schema classes information returned after opening a Realm

@@ -14,7 +14,9 @@ local coroutineOpenRealm = coroutine.create(function ()
         schema = {
             {
                 name = "StoreSync",
+                primaryKey = "_id",
                 properties = {
+                    _id = "int",
                     -- Use e.g. "city" as the partition key (configure on backend)
                     city = "string",
                     numEmployees = "int"
@@ -49,6 +51,50 @@ if currentUser then
     coroutine.resume(coroutineOpenRealm)
 else
     registerAndLogIn("jane@example.com", "12345")
+end
+
+if realmSync then
+    local storeA
+    local storeB
+    local storeC
+    realmSync:write(function()
+        -- Create objects that should sync (city = "Chicago")
+        storeA = realmSync:create("StoreSync")
+        storeA._id = math.random(1, 100000)
+        storeA.city = "Chicago"
+        storeA.numEmployees = 10
+        assert(storeA)
+        assert(storeA.city == "Chicago", "'city' property does not match expected.")
+        assert(storeA.numEmployees == 10, "'numEmployees' property does not match expected.")
+
+        storeB = realmSync:create("StoreSync")
+        storeB._id = math.random(1, 100000)
+        storeB.city = "Chicago"
+        storeB.numEmployees = 10
+        assert(storeB)
+        assert(storeB.city == "Chicago", "'city' property does not match expected.")
+        assert(storeB.numEmployees == 10, "'numEmployees' property does not match expected.")
+
+        -- Create object that should not sync (city != "Chicago")
+        storeC = realmSync:create("StoreSync")
+        storeB._id = math.random(1, 100000)
+        storeC.city = "Austin"
+        storeC.numEmployees = 10
+        assert(storeC)
+        assert(storeC.city == "Austin", "'city' property does not match expected.")
+        assert(storeC.numEmployees == 10, "'numEmployees' property does not match expected.")
+    end)
+
+    -- TODO: Add listener to an obejct
+
+    local stores
+    realmSync:write(function()
+        stores = realmSync:objects("StoreSync")
+        assert(stores)
+        assert(#stores == 2, "Number of sync stores does not match expected.")
+    end)
+
+    -- TODO: Add listener to a collection
 end
 
 

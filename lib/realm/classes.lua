@@ -47,8 +47,6 @@
 ---@field primaryKey string?
 ---@field properties table<string, Realm.Schema.PropertyDefinition | Realm.Schema.PropertyType>
 
--- Types for the realm schema cache
-
 ---@class Realm.Schema.ClassInformation Schema classes information returned after opening a Realm
 ---@field key integer Class key
 ---@field properties table<string, Realm.Schema.PropertyInformation>

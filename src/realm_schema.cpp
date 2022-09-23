@@ -143,7 +143,6 @@ realm_schema_t* _parse_schema(lua_State* L) {
         // Add the parsed class and property information to the array.
         class_info.num_properties = class_properties.size();        
         properties[i-1] = class_properties.data();
-        std::cout << properties[i-1]->link_target << std::endl;
     }
     // Pop the last class index.
     lua_pop(L, 1);

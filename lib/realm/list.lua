@@ -1,4 +1,4 @@
-local native = require "_realm_native"
+local native = require "realm.native"
 local RealmObject = require "realm.object"
 
 ---@class RealmList

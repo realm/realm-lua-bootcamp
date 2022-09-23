@@ -70,6 +70,7 @@ local schema = {
             name = "string",
             age = "int",
             pet = "Pet?",
+            pets = "Pet[]",
         }
     },
     {
@@ -206,6 +207,24 @@ describe("Realm Lua tests", function()
             uv.run()
 
             assert.True(notificationReceived)
+        end)
+    end)
+    describe("with lists", function()
+        local testPetA
+        local testPetB
+        setup(function()
+            realm:write(function() 
+                testPetA = realm:create("Pet", { name = "TurtleA"})
+                testPetB = realm:create("Pet", { name = "TurtleB"})
+                table.insert(testPerson.pets, testPetA)
+                table.insert(testPerson.pets, testPetB)
+            end)
+        end)
+        teardown(function() _delete(realm, {testPetA, testPetB}) end)
+        it("successfully insert elements", function ()
+            local petList = testPerson.pets
+            assert.is.equal(#petList, 2)
+            assert.is.equal(petList[1].name, "TurtleA")
         end)
     end)
 end)

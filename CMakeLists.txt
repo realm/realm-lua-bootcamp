@@ -16,6 +16,8 @@ target_compile_definitions(ObjectStore PUBLIC
 )
 target_link_libraries(ObjectStore PUBLIC uv_a)
 
+find_package(CURL REQUIRED)
+
 # Project-wide build flags
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

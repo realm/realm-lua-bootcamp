@@ -10,6 +10,7 @@ struct realm_lua_userdata {
 
 #include "realm_app.hpp"
 #include "realm_util.hpp"
+#include "curl_http_transport.hpp"
 
 // TODO: Extract 'free_userdata' as it's also used by realm_notifications.cpp
 static void free_userdata(realm_lua_userdata* userdata) {
@@ -71,7 +72,7 @@ static void on_log_in_complete(realm_lua_userdata* userdata, realm_user_t* user_
 int _lib_realm_app_create(lua_State* L) {
     // Get arguments needed to create configuration objects.
     const char* app_id = (const char*)lua_tostring(L, 1);
-    const realm_http_transport_t* http_transport = NULL;           // TODO: Replace
+    const realm_http_transport_t* http_transport = make_curl_http_transport();
 
     // Get configuration objects needed to create a realm app.
     const realm_app_config_t* app_config = realm_app_config_new(app_id, http_transport);
@@ -81,6 +82,9 @@ int _lib_realm_app_create(lua_State* L) {
     realm_app_t** app = static_cast<realm_app_t**>(lua_newuserdata(L, sizeof(realm_app_t*)));
     luaL_setmetatable(L, RealmHandle);
     *app = realm_app_create(app_config, sync_client_config);
+
+    realm_release(http_transport);
+
     if (!*app) {
         return _inform_realm_error(L);
     }

@@ -8,6 +8,7 @@ add_executable(realm-lua-playground
     realm_notifications.cpp
     realm_app.cpp
     realm_user.cpp
+    curl_http_transport.cpp
 )
 
 target_compile_definitions(realm-lua-playground PUBLIC
@@ -19,4 +20,5 @@ target_link_libraries(realm-lua-playground
     Realm::ObjectStore 
     Realm::QueryParser
     RealmFFIStatic
+    CURL::libcurl
 )

@@ -72,7 +72,7 @@ static void on_log_in_complete(realm_lua_userdata* userdata, realm_user_t* user_
 int _lib_realm_app_create(lua_State* L) {
     // Get arguments needed to create configuration objects.
     const char* app_id = (const char*)lua_tostring(L, 1);
-    const realm_http_transport_t* http_transport = make_curl_http_transport();
+    realm_http_transport_t* http_transport = make_curl_http_transport();
 
     // Get configuration objects needed to create a realm app.
     const realm_app_config_t* app_config = realm_app_config_new(app_id, http_transport);

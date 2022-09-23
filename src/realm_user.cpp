@@ -1,24 +1,25 @@
 #include "realm_user.hpp"
+#include "realm_util.hpp"
 
 int _lib_realm_user_log_out(lua_State* L) {
+    // Get argument.
+    realm_user_t** user = (realm_user_t**)lua_touserdata(L, 1);
 
-    // realm.h
-
-    // RLM_API bool realm_user_log_out(realm_user_t*);
-
-
-    // NOTE: There is also:
-    // RLM_API bool realm_app_log_out(realm_app_t* app, realm_user_t* user, realm_app_void_completion_func_t callback,
-    //                            realm_userdata_t userdata, realm_free_userdata_func_t userdata_free);
+    // Log out.
+    int status = realm_user_log_out(*user);
+    if (!status) {
+        return _inform_realm_error(L);
+    }
 
     return 0;
 }
 
 int _lib_realm_user_get_id(lua_State* L) {
+    // Get argument.
+    const realm_user_t** user = (const realm_user_t**)lua_touserdata(L, 1);
 
-    // realm.h
-
-    // RLM_API const char* realm_user_get_identity(const realm_user_t* user) RLM_API_NOEXCEPT;
+    // Push the user's ID onto the stack.
+    lua_pushstring(L, realm_user_get_identity(*user));
 
     return 1;
 }

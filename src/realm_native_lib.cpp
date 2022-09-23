@@ -37,7 +37,7 @@ static int _lib_realm_open(lua_State* L) {
 
     // Pop both fields.
     lua_pop(L, 2);
-    
+
     const realm_t** realm = static_cast<const realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));
     luaL_setmetatable(L, RealmHandle);
     *realm = realm_open(config);
@@ -48,6 +48,15 @@ static int _lib_realm_open(lua_State* L) {
     }
     _push_schema_info(L, *realm);
     return 2;
+
+    // TODO: Handle "sync" property on the configuration object
+
+    // Get realm sync config object
+    // RLM_API realm_sync_config_t* realm_sync_config_new(const realm_user_t*, const char* partition_value) RLM_API_NOEXCEPT;
+
+    // Set the sync config on the realm config
+    // RLM_API void realm_config_set_sync_config(realm_config_t*, realm_sync_config_t*);
+
 }
 
 static int _lib_realm_release(lua_State* L) {
@@ -329,6 +338,7 @@ static const luaL_Reg lib[] = {
   {"realm_app_register_email",                  _lib_realm_app_register_email},
   {"realm_app_credentials_new_email_password",  _lib_realm_app_credentials_new_email_password},
   {"realm_app_log_in",                          _lib_realm_app_log_in},
+  {"realm_app_get_current_user",                _lib_realm_app_get_current_user},
   {"realm_user_log_out",                        _lib_realm_user_log_out},
   {"realm_user_get_id",                         _lib_realm_user_get_id},
   {"realm_open",                                _lib_realm_open},

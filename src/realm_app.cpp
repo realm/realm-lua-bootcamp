@@ -1,24 +1,10 @@
-#include <lua.hpp>
-
-// TODO: Extract 'realm_lua_userdata' as it's also used by realm_notifications.cpp
-struct realm_lua_userdata {
-    lua_State* L;
-    int callback_reference;
-};
-
-#define realm_userdata_t realm_lua_userdata*
+#define realm_userdata_t struct realm_lua_userdata*
 
 #include "realm_app.hpp"
 #include "realm_util.hpp"
 #include "curl_http_transport.hpp"
 
 #include <filesystem>
-
-// TODO: Extract 'free_userdata' as it's also used by realm_notifications.cpp
-static void free_userdata(realm_lua_userdata* userdata) {
-    luaL_unref(userdata->L, LUA_REGISTRYINDEX, userdata->callback_reference);
-    delete userdata;
-}
 
 static void on_register_email_complete(realm_lua_userdata* userdata, const realm_app_error_t* error) {
     lua_State* L = userdata->L;
@@ -123,7 +109,7 @@ static int app_email_password_provider_client_register_email(lua_State* L) {
         password,
         on_register_email_complete,
         userdata,
-        free_userdata
+        free_lua_userdata
     );
     if (!status) {
         return _inform_realm_error(L);
@@ -170,7 +156,7 @@ static int app_log_in(lua_State* L) {
         *app_credentials,
         on_log_in_complete,
         userdata,
-        free_userdata
+        free_lua_userdata
     );
     if (!status) {
         return _inform_realm_error(L);

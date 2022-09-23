@@ -58,4 +58,12 @@ inline std::string_view lua_tostringview(lua_State* L, int index) {
     return {};
 }
 
+struct realm_lua_userdata {
+    lua_State* L;
+    int callback_reference;
+    virtual ~realm_lua_userdata();
+};
+
+void free_lua_userdata(realm_lua_userdata* userdata);
+
 #endif

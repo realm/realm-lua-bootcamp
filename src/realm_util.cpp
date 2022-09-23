@@ -112,3 +112,10 @@ std::optional<realm_property_info_t> get_property_info_by_key(lua_State* L, real
     }
     return property_info;
 }
+
+realm_lua_userdata::~realm_lua_userdata() = default;
+
+void free_lua_userdata(realm_lua_userdata* userdata) {
+    luaL_unref(userdata->L, LUA_REGISTRYINDEX, userdata->callback_reference);
+    delete userdata;
+}

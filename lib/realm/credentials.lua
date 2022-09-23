@@ -1,4 +1,7 @@
+local native = require "_realm_native"
+
 ---@class RealmCredentials
+---@field _handle userdata The realm credentials userdata.
 local RealmCredentials = {}
 
 ---Get a RealmCredentials object to use for authenticating an anonymous user.
@@ -15,9 +18,11 @@ end
 ---@param password string The password to associate with the email.
 ---@return RealmCredentials
 function RealmCredentials:emailPassword(email, password)
-
-    -- Call native.realm_app_credentials_new_email_password which should call C: realm_app_credentials_new_email_password
-
+    local credentials = {
+        _handle = native.realm_app_credentials_new_email_password(email, password)
+    }
+    credentials = setmetatable(credentials, RealmCredentials)
+    return credentials
 end
 
 return RealmCredentials

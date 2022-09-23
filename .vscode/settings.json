@@ -1,5 +1,4 @@
 {
-    "lua.debug.settings.path": "${workspaceFolder}/lib/?/init.lua;${workspaceFolder}/lib/?.lua",
     "cmake.configureOnOpen": true,
     "cmake.statusbar.advanced": {
         "kit": {

@@ -2,9 +2,9 @@
 #include <string>
 
 #include <lua.hpp>
-#include <uv.h>
 
-#include "realm_native_lib.hpp"
+#include "../src/realm_native_lib.hpp"
+#include "../src/realm_scheduler.hpp"
 
 static int msghandler(lua_State *L) {
     const char *msg = lua_tostring(L, 1);
@@ -53,6 +53,17 @@ static int dostring(lua_State *L, const char *s, const char *name) {
     return dochunk(L, luaL_loadbuffer(L, s, strlen(s), name));
 }
 
+static void createargtable (lua_State *L, char **argv, int argc, int script) {
+    int i, narg;
+    narg = argc - (script + 1);  /* number of positive indices */
+    lua_createtable(L, narg, script + 1);
+    for (i = 0; i < argc; i++) {
+        lua_pushstring(L, argv[i]);
+        lua_rawseti(L, -2, i - script);
+    }
+    lua_setglobal(L, "arg");
+}
+
 int main(int argc, char** argv) {
     std::string lua_path;
     if (const char* existing_path = getenv("LUA_PATH")) {
@@ -69,12 +80,14 @@ int main(int argc, char** argv) {
 
     // Load built-in libraries in the VM instance
     luaL_openlibs(L);
-    realm_lib_open(L);
+    luaL_requiref(L, "realm.native", luaopen_realm_native, 0);
+    luaL_requiref(L, "realm.scheduler.libuv.native", luaopen_realm_scheduler_libuv_native, 0);
 
     const char* file = SCRIPT_SOURCE_PATH"/main.lua";
 
     if (argc > 1) {
         // arguments here are what the Lua vscode debugger passes to inject itself
+        int fileArgIndex = 0;
         for (int i = 1; i < argc; i++) {
             if (argv[i][0] == '-') {
                 switch (argv[i][1]) {
@@ -86,28 +99,15 @@ int main(int argc, char** argv) {
                 }
             } else {
                 file = argv[i];
+                fileArgIndex = i;
+                break;
             }
         }
+        createargtable(L, argv, argc, fileArgIndex);
     }
 
-    // Grab the default loop and store the Lua state in its data slot so we can get it later
-    uv_loop_t* event_loop = uv_default_loop();
-    event_loop->data = L;
-
-    // Handle CTRL + C to stop the event loop, allowing the app to close
-    uv_signal_t interrupt_signal;
-    uv_signal_init(event_loop, &interrupt_signal);
-    uv_signal_start(&interrupt_signal, [](uv_signal_t* handle, int) {
-        std::cout << std::endl << "Received interrupt signal. Exiting." << std::endl;
-        uv_stop(handle->loop);
-    }, SIGINT);
-    uv_unref(reinterpret_cast<uv_handle_t*>(&interrupt_signal));
-
     dofile(L, file);
-    uv_run(event_loop, UV_RUN_DEFAULT);
 
-    uv_close(reinterpret_cast<uv_handle_t*>(&interrupt_signal), nullptr);
-    uv_loop_close(event_loop);
     lua_close(L);
     return 0;
 }

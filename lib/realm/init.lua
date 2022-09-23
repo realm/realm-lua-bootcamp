@@ -1,10 +1,12 @@
-local native = require "_realm_native"
+local native = require "realm.native"
+local scheduler = require "realm.scheduler"
 
 ---@module '.classes'
 
 local RealmObject = require "realm.object"
 local RealmResults = require "realm.results"
 
+--@classmod realm
 ---@class Realm
 ---@field _handle userdata
 ---@field _schema table<string, Realm.Schema.ClassInformation>
@@ -16,6 +18,10 @@ function Realm:__gc()
     self:close()
 end
 
+function Realm:__close()
+    self:close()
+end
+
 ---Checks whether class exists in schema, throws error if not. 
 ---@param className string
 ---@param realm Realm
@@ -23,8 +29,8 @@ end
 local function _safeGetClass(realm, className)
     local classInfo = realm._schema[className]
     if classInfo == nil then
+        print(debug.traceback())
         error("Class ".. className .. " not found in schema");
-        return {}
     end
     return classInfo
 end
@@ -34,7 +40,7 @@ end
 ---@return T
 function Realm:write(writeCallback)
     native.realm_begin_write(self._handle)
-    local status, result = pcall(writeCallback)
+    local status, result = xpcall(writeCallback, debug.traceback)
     if (status) then
         native.realm_commit_transaction(self._handle)
         return result
@@ -47,7 +53,8 @@ end
 ---@param className string
 ---@param values table?
 ---@param handle userdata?
----@return Realm.Object
+---@generic T : Realm.Object
+---@return T
 function Realm:create(className, values, handle)
     return RealmObject:new(self, _safeGetClass(self, className), values, handle)
 end
@@ -80,7 +87,9 @@ end
 
 ---@param config Realm.Config
 function Realm.open(config)
-    local _handle, _schema = native.realm_open(config)
+    local scheduler = config.scheduler and native.realm_clone(config.scheduler) or scheduler.defaultFactory()
+    local _handle, _schema = native.realm_open(config, scheduler)
+    native.realm_release(scheduler)
     local self = setmetatable({
         _handle = _handle,
         _schema = _schema,

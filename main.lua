@@ -1,5 +1,7 @@
 ---@diagnostic disable: undefined-field
+local uv = require "luv"
 local Realm = require "realm"
+require "realm.scheduler.libuv"
 
 ---@class Person
 ---@field name string
@@ -106,7 +108,7 @@ assert(not realm:isValid(testPersonA), "Filtered object must be properly deleted
 -- -------------------- TESTING PRIMARY KEY FEATURES -------------------- 
 print("Testing primary key features...")
 realm:write(function()
-    testPersonA = realm:create("Person2", {name = "H" .. randomAge, age = 1337})
+    testPersonA = realm:create("Person2", {name = "pk3", age = 1337})
     assert(not pcall(function()
         testPersonB = realm:create("Person2", {name = "H" .. randomAge, age = 2000})
     end), "Function must throw error when object with same primary key is created")

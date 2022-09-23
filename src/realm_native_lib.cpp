@@ -26,16 +26,25 @@ static int _lib_realm_open(lua_State* L) {
     lua_getfield(L, 1, "path");
     luaL_checkstring(L, -1);
     realm_config_set_path(config, lua_tostring(L, -1));
+    lua_pop(L, 1);
 
     lua_getfield(L, 1, "schemaVersion");
     luaL_checkinteger(L, -1);
     realm_config_set_schema_version(config, lua_tointeger(L, -1));
     // TODO?: add ability to change this through config object? 
     realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_SOFT_RESET_FILE); // delete realm file if there are schema conflicts
-
-    // Pop both fields.
-    lua_pop(L, 2);
+    lua_pop(L, 1);
     
+    lua_getfield(L, 1, "_cached");
+    if (lua_isboolean(L, -1)) {
+        realm_config_set_cached(config, lua_toboolean(L, -1));
+    }
+    lua_pop(L, 1);
+
+    if (realm_scheduler_t** scheduler = static_cast<realm_scheduler_t**>(luaL_checkudata(L, 2, RealmHandle))) {
+        realm_config_set_scheduler(config, *scheduler);
+    }
+
     const realm_t** realm = static_cast<const realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));
     luaL_setmetatable(L, RealmHandle);
     *realm = realm_open(config);
@@ -315,18 +324,15 @@ static const luaL_Reg lib[] = {
   {NULL, NULL}
 };
 
-void realm_lib_open(lua_State* L) {
-    // see linit.c from the Lua source code
-    luaL_getsubtable(L, LUA_REGISTRYINDEX, LUA_PRELOAD_TABLE);
-    lua_pushcfunction(L, [](lua_State* L) {
-        luaL_newlib(L, lib);
-        return 1;
-    });
-    lua_setfield(L, -2, "_realm_native");
-    lua_pop(L, 1);
-
+extern "C" int luaopen_realm_native(lua_State* L) {
+    const luaL_Reg realm_handle_funcs[] = {
+        {"__gc", _lib_realm_release},
+        {NULL, NULL}
+    };
     luaL_newmetatable(L, RealmHandle);
-    lua_pushstring(L, "__gc");
-    lua_pushcfunction(L, &_lib_realm_release);
-    lua_settable(L, -3);
+    luaL_setfuncs(L, realm_handle_funcs, 0);
+    lua_pop(L, 1); // pop the RealmHandle metatable off the stack
+
+    luaL_newlib(L, lib);
+    return 1;
 }

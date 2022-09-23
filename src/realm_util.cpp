@@ -42,7 +42,7 @@ std::optional<realm_value_t> lua_to_realm_value(lua_State* L, int arg_index){
             .link = realm_object_as_link(*realm_object)
         };
     } else {
-        _inform_error(L, "Uknown Lua type");
+        _inform_error(L, "Uknown Lua type: %1", lua_typename(L, lua_type(L, arg_index)));
         return std::nullopt;
     }
 }

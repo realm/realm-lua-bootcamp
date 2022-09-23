@@ -1,5 +1,7 @@
 ---@meta
 
+---@module "realm.scheduler"
+
 ---@alias Realm.Schema.PropertyType string | "bool" | "int" | "float" | "string"
 
 ---Externally defined classes
@@ -10,6 +12,8 @@
 ---@field path string
 ---@field schemaVersion integer
 ---@field schema Realm.Schema.ClassDefinition[]
+---@field scheduler Realm.Scheduler?
+---@field _cached boolean? return a cached Realm instance, default is true
 
 ---@alias Realm.Handle userdata
 

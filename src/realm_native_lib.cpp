@@ -26,16 +26,25 @@ static int _lib_realm_open(lua_State* L) {
     lua_getfield(L, 1, "path");
     luaL_checkstring(L, -1);
     realm_config_set_path(config, lua_tostring(L, -1));
+    lua_pop(L, 1);
 
     lua_getfield(L, 1, "schemaVersion");
     luaL_checkinteger(L, -1);
     realm_config_set_schema_version(config, lua_tointeger(L, -1));
     // TODO?: add ability to change this through config object? 
     realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_SOFT_RESET_FILE); // delete realm file if there are schema conflicts
-
-    // Pop both fields.
-    lua_pop(L, 2);
+    lua_pop(L, 1);
     
+    lua_getfield(L, 1, "_cached");
+    if (lua_isboolean(L, -1)) {
+        realm_config_set_cached(config, lua_toboolean(L, -1));
+    }
+    lua_pop(L, 1);
+
+    if (realm_scheduler_t** scheduler = static_cast<realm_scheduler_t**>(luaL_checkudata(L, 2, RealmHandle))) {
+        realm_config_set_scheduler(config, *scheduler);
+    }
+
     const realm_t** realm = static_cast<const realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));
     luaL_setmetatable(L, RealmHandle);
     *realm = realm_open(config);

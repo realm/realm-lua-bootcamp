@@ -12,7 +12,7 @@
             "luaexe": "${command:cmake.launchTargetPath}",
             "cwd": "${command:cmake.launchTargetDirectory}",
             "stopOnEntry": true,
-            "path": "${workspaceFolder}/lua_modules/share/lua/5.4/?.lua",
+            "path": "${workspaceFolder}/lib/?.lua;${workspaceFolder}/lib/?/init.lua;${workspaceFolder}/lua_modules/share/lua/5.4/?.lua",
             "cpath": "${workspaceFolder}/lua_modules/lib/lua/5.4/?.so",
             "preLaunchTask": "build-deps"
         },
@@ -25,7 +25,7 @@
             "environment": [
                 {
                     "name": "LUA_PATH",
-                    "value": "${workspaceFolder}/lua_modules/share/lua/5.4/?.lua"
+                    "value": "${workspaceFolder}/lib/?.lua;${workspaceFolder}/lib/?/init.lua;${workspaceFolder}/lua_modules/share/lua/5.4/?.lua"
                 },
                 {
                     "name": "LUA_CPATH",

@@ -5,6 +5,7 @@ add_library(realm-lua-objects OBJECT
     realm_schema.cpp
     realm_native_lib.cpp
     realm_notifications.cpp
+    realm_scheduler.cpp
 )
 
 target_include_directories(realm-lua-objects PUBLIC

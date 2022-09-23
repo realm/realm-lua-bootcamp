@@ -32,17 +32,21 @@ build = {
          ["realm"] = "lib/realm/init.lua",
          ["realm.object"] = "lib/realm/object.lua",
          ["realm.results"] = "lib/realm/results.lua",
-         ["realm.classes"] = "lib/realm/classes.lua"
+         ["realm.classes"] = "lib/realm/classes.lua",
+         ["realm.scheduler"] = "lib/realm/scheduler/init.lua",
+         ["realm.scheduler.libuv"] = "lib/realm/scheduler/libuv.lua"
       }
    }
 }
 
 dependencies = {
-   "lua >= 5.4"
+   "lua >= 5.4",
+   "luv"
 }
 
 test_dependencies = {
   "busted",
+  "inspect"
 }
 
 test = {

@@ -6,16 +6,40 @@
 ---the built-in definition of assert.
 assert = assert
 
+local uv = require "luv"
+local Realm = require "realm"
+require "realm.scheduler.libuv"
+local LuaFileSystem = require "lfs"
+local inspect = require "inspect"
+
 assert:register("assertion", "is_realm_handle", function(_, arguments)
     return getmetatable(arguments[1]).__name == "_realm_handle"
 end)
 
-local Realm = require "realm"
-local LuaFileSystem = require "lfs"
-
 local function makeTempPath()
     local path = LuaFileSystem.currentdir()
     return path .. "/test.realm"
+end
+
+---@param milliseconds integer
+local function timeout(milliseconds)
+    local timer = uv.new_timer()
+    timer:start(milliseconds, 0, function ()
+        error("timeout")
+        timer:stop()
+        timer:close()
+    end)
+    return timer
+end
+
+local function post(cb)
+    local async
+    async = uv.new_async(function ()
+        cb()
+        async:close()
+    end)
+    async:send()
+    return async
 end
 
 ---Helper function for cleaning up created objects
@@ -159,25 +183,29 @@ describe("Realm Lua tests", function()
             end)
         end)
         describe("with notifications", function()
-            local objectCallbackTester
-            local objectNotificationToken
-            local objectChanges
-            local onPersonChange
-            --- TODO: async testing
+            local notificationReceived = false;
 
-            setup(function()
-                onPersonChange = function (person, changes)
-                    assert.is.equal(person._handle, testPerson._handle)
-                    objectChanges = changes
+            local people = realm:objects("Person")
+            local notificationToken = people:addListener(function (collection, changes)
+                if #changes.insertions == 1 then
+                    notificationReceived = true;
+                    uv.stop()
                 end
-                objectCallbackTester = coroutine.create(function() end)
             end)
-            it("should successfuly create listeners and return token", function()
-                objectNotificationToken = testPerson:addListener(onPersonChange)
-                assert.is_realm_handle(objectNotificationToken)
-                local function callbackTest() coroutine.resume(objectCallbackTester) end
-                assert.has_no.errors(callbackTest)
+            assert.is_realm_handle(notificationToken)
+
+            post(function ()
+                local otherRealm <close> = Realm.open({path = path, schemaVersion = 0, schema = schema, _cached = false})
+                otherRealm:write(function()
+                    otherRealm:create("Person")
+                end)
             end)
+
+            timeout(1000)
+
+            uv.run()
+
+            assert.True(notificationReceived)
         end)
     end)
 end)

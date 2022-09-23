@@ -4,6 +4,7 @@
 #include <lua.hpp>
 
 #include "../src/realm_native_lib.hpp"
+#include "../src/realm_scheduler.hpp"
 
 static int msghandler(lua_State *L) {
     const char *msg = lua_tostring(L, 1);
@@ -52,6 +53,17 @@ static int dostring(lua_State *L, const char *s, const char *name) {
     return dochunk(L, luaL_loadbuffer(L, s, strlen(s), name));
 }
 
+static void createargtable (lua_State *L, char **argv, int argc, int script) {
+    int i, narg;
+    narg = argc - (script + 1);  /* number of positive indices */
+    lua_createtable(L, narg, script + 1);
+    for (i = 0; i < argc; i++) {
+        lua_pushstring(L, argv[i]);
+        lua_rawseti(L, -2, i - script);
+    }
+    lua_setglobal(L, "arg");
+}
+
 int main(int argc, char** argv) {
     std::string lua_path;
     if (const char* existing_path = getenv("LUA_PATH")) {
@@ -69,11 +81,13 @@ int main(int argc, char** argv) {
     // Load built-in libraries in the VM instance
     luaL_openlibs(L);
     luaL_requiref(L, "realm.native", luaopen_realm_native, 0);
+    luaL_requiref(L, "realm.scheduler.libuv.native", luaopen_realm_scheduler_libuv_native, 0);
 
     const char* file = SCRIPT_SOURCE_PATH"/main.lua";
 
     if (argc > 1) {
         // arguments here are what the Lua vscode debugger passes to inject itself
+        int fileArgIndex = 0;
         for (int i = 1; i < argc; i++) {
             if (argv[i][0] == '-') {
                 switch (argv[i][1]) {
@@ -85,8 +99,11 @@ int main(int argc, char** argv) {
                 }
             } else {
                 file = argv[i];
+                fileArgIndex = i;
+                break;
             }
         }
+        createargtable(L, argv, argc, fileArgIndex);
     }
 
     dofile(L, file);

@@ -1,5 +1,3 @@
----@meta
-
 ---@module "realm.scheduler"
 
 ---@alias Realm.Schema.PropertyType string | "bool" | "int" | "float" | "string"
@@ -48,3 +46,44 @@
 ---@field name string
 ---@field primaryKey string?
 ---@field properties table<string, Realm.Schema.PropertyDefinition | Realm.Schema.PropertyType>
+
+---@class Realm.Schema.ClassInformation Schema classes information returned after opening a Realm
+---@field key integer Class key
+---@field properties table<string, Realm.Schema.PropertyInformation>
+---@field primaryKey string?
+
+---@class Realm.Schema.PropertyInformation
+---@field key userdata
+---@field name string
+---@field type PropertyInformation.Type
+---@field objectType string?
+---@field collectionType PropertyInformation.CollectionType?
+
+---@enum PropertyInformation.Type
+local PropertyType = {
+    INT = 0,
+    BOOL = 1,
+    STRING = 2,
+    BINARY = 4,
+    MIXED = 6,
+    TIMESTAMP = 8,
+    FLOAT = 9,
+    DOUBLE = 10,
+    DECIMAL128 = 11,
+    OBJECT = 12,
+    LINKING_OBJECTS = 14,
+    OBJECT_ID = 15,
+    UUID = 17,
+}
+
+---@enum PropertyInformation.CollectionType
+local CollectionType = {
+    List = 1,
+    Set = 2,
+    Dictionary = 4, 
+}
+
+return {
+    PropertyType = PropertyType,
+    CollectionType = CollectionType,
+}

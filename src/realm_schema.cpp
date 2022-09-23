@@ -8,7 +8,7 @@
 #include "realm_util.hpp"
 #include "realm_schema.hpp"
 
-static void _parse_property_type(lua_State* L, realm_property_info_t& prop, std::string_view type, std::vector<std::string>& strings) {
+static void _parse_property_type(lua_State* L, realm_property_info_t& prop, std::string_view type, std::deque<std::string>& strings) {
     if (!type.size()) {
         _inform_error(L, "");
     }
@@ -90,7 +90,7 @@ realm_schema_t* _parse_schema(lua_State* L) {
     // 2D vector of class properties to act as a memory buffer
     // for the actual properties array.
     std::vector<std::vector<realm_property_info_t>> properties_vector;
-    std::vector<std::string> properties_strings;
+    std::deque<std::string> properties_strings;
 
     int argument_index = lua_gettop(L);
     for (size_t i = 1; i <= classes_len; i++) {
@@ -188,7 +188,25 @@ void _push_schema_info(lua_State* L, const realm_t* realm) {
             
             lua_pushinteger(L, realm::c_api::to_capi(property_info.type));
             lua_setfield(L, -2, "type");
- 
+
+            if (property_info.object_type.size() > 0) {
+                lua_pushstring(L, property_info.object_type.c_str());
+                lua_setfield(L, -2, "objectType");
+            }
+
+            if (bool(property_info.type & realm::PropertyType::Collection)) {
+                realm_collection_type_e collection_type;
+                if (bool(property_info.type & realm::PropertyType::Array))
+                    collection_type = RLM_COLLECTION_TYPE_LIST;
+                else if (bool(property_info.type & realm::PropertyType::Set))
+                    collection_type = RLM_COLLECTION_TYPE_SET;
+                else if (bool(property_info.type & realm::PropertyType::Dictionary))
+                    collection_type = RLM_COLLECTION_TYPE_DICTIONARY;
+                
+                lua_pushinteger(L, collection_type);
+                lua_setfield(L, -2, "collectionType");
+            }
+
             lua_setfield(L, -2, property_name);
         }
         lua_setfield(L, -2, "properties");

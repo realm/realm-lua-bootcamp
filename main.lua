@@ -17,6 +17,7 @@ local realm = Realm.open({
                 name = "string",
                 age = "int",
                 pet = "Pet?",
+                pets = "Pet[]",
             }
         },
         {

@@ -17,6 +17,15 @@ int _inform_error(lua_State* L, const char* format, Args&&... args) {
 // Realm through realm_get_last_error.
 int _inform_realm_error(lua_State* L);
 
+inline int log_lua_error(lua_State* L, int status) {
+    if (status != LUA_OK) {
+        const char *msg = lua_tostring(L, -1);
+        lua_writestringerror("%s\n", msg);
+        lua_pop(L, 1);
+    }
+    return status;
+}
+
 // Converts a lua value on the stack into a corresponding realm value
 std::optional<realm_value_t> lua_to_realm_value(lua_State* L, int arg_index);
 

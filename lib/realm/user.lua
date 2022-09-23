@@ -4,6 +4,7 @@ local native = require "_realm_native"
 ---@field id string The id of the user.
 ---@field _handle userdata The realm user userdata.
 local RealmUser = {}
+RealmUser.__index = RealmUser
 
 ---@param handle userdata The realm user userdata.
 ---@return RealmUser | nil

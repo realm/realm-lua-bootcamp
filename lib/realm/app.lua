@@ -8,6 +8,7 @@ local RealmUser = require "realm.user"
 ---@class RealmApp
 ---@field _handle userdata The realm app userdata.
 local RealmApp = {}
+RealmApp.__index = RealmApp
 
 ---Get the currently logged in user.
 ---@return RealmUser | nil

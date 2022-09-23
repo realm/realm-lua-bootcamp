@@ -2,9 +2,18 @@ local Realm = require "realm"
 local RealmApp = require "realm.app"
 local RealmCredentials = require "realm.credentials"
 
+function coroutine.resumeThrowable(co, val1, ...)
+    local results = table.pack(coroutine.resume(co, val1, ...))
+    if not results[1] then
+        error(results[2])
+    end
+
+    return table.unpack(results)
+end
+
 -- EXAMPLE SYNC USAGE: --
 
-local APP_ID = "MY_APP_ID"
+local APP_ID = "application-0-oltdi"
 local app = RealmApp.new({ appId = APP_ID })
 local currentUser = app:currentUser()
 local realmSync
@@ -26,7 +35,7 @@ local coroutineOpenRealm = coroutine.create(function ()
         sync = {
             user = currentUser,
             -- Sync all the stores with partition key ("city") set to "Chicago".
-            partitionValue = "Chicago"
+            partitionValue = "\"Chicago\""
             -- NOTE: There are more sync config props that could be set.
         }
     })
@@ -34,13 +43,21 @@ end)
 
 local function registerAndLogIn(email, password)
     -- When the registration is complete, the callback will be invoked.
-    app:registerEmail(email, password, function ()
-        -- When the login is complete, the callback will be invoked.
-        local credentials = RealmCredentials:emailPassword(email, password)
-        app:logIn(credentials, function (user)
-            currentUser = user
-            coroutine.resume(coroutineOpenRealm)
-        end)
+    app:registerEmail(email, password, function (err)
+        if not err then
+            -- When the login is complete, the callback will be invoked.
+            local credentials = RealmCredentials:emailPassword(email, password)
+            app:logIn(credentials, function (user, err)
+                if not err then
+                    currentUser = user
+                    coroutine.resumeThrowable(coroutineOpenRealm)
+                else
+                    error(err)
+                end
+            end)
+        else
+            error(err)
+        end
     end)
 end
 
@@ -48,9 +65,9 @@ end
 -- whereafter we resume the coroutine and open the realm. Otherwise we register
 -- a new user and log in before opening the realm.
 if currentUser then
-    coroutine.resume(coroutineOpenRealm)
+    coroutine.resumeThrowable(coroutineOpenRealm)
 else
-    registerAndLogIn("jane@example.com", "12345")
+    registerAndLogIn("jane@example.com", "123456")
 end
 
 if realmSync then

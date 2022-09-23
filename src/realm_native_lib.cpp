@@ -25,38 +25,74 @@ static int _lib_realm_open(lua_State* L) {
     realm_config_set_schema(config, schema);
     realm_release(schema);
 
+    realm_sync_config_t* sync_config = nullptr;
+    lua_getfield(L, 1, "sync");
+    if (lua_istable(L, -1)) {
+        const char* partition_value;
+        lua_getfield(L, -1, "partitionValue");
+        if (lua_isstring(L, -1)) {
+            partition_value = lua_tostring(L, -1);
+        } else {
+            return _inform_error(L, "sync.partitionValue must be a string, got %1.", lua_typename(L, lua_type(L, -1)));
+        }
+        lua_pop(L, 1);
+
+        realm_user_t* user = nullptr;
+        lua_getfield(L, -1, "user");
+        if (lua_istable(L, -1)) {
+            lua_getfield(L, -1, "_handle");
+            if (auto** userdata = static_cast<realm_user_t**>(luaL_checkudata(L, -1, RealmHandle))) {
+                user = *userdata;
+            }
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 1);
+        if (!user) {
+            return _inform_error(L, "sync.user must be a User object.");
+        }
+
+        sync_config = realm_sync_config_new(user, partition_value);
+        realm_config_set_sync_config(config, sync_config);
+    }
+    lua_pop(L, 1);
+
     lua_getfield(L, 1, "path");
-    luaL_checkstring(L, -1);
-    realm_config_set_path(config, lua_tostring(L, -1));
+    if (lua_isstring(L, -1)) {
+        realm_config_set_path(config, lua_tostring(L, -1));
+    } else if (sync_config) {
+        char* path = realm_app_sync_client_get_default_file_path_for_realm(sync_config, nullptr);
+        realm_config_set_path(config, path);
+        realm_free(path);
+    } else {
+        realm_config_set_path(config, "default.realm");
+    }
+    lua_pop(L, 1);
 
     lua_getfield(L, 1, "schemaVersion");
-    luaL_checkinteger(L, -1);
-    realm_config_set_schema_version(config, lua_tointeger(L, -1));
-    // TODO?: add ability to change this through config object? 
-    realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_SOFT_RESET_FILE); // delete realm file if there are schema conflicts
-
-    // Pop both fields.
-    lua_pop(L, 2);
+    if (lua_isinteger(L, -1)) {
+        realm_config_set_schema_version(config, lua_tonumber(L, -1));
+    } else {
+        realm_config_set_schema_version(config, 0);
+    }
+    lua_pop(L, 1);
+    
+    if (sync_config) {
+        realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_ADDITIVE_EXPLICIT);
+    } else {
+        realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_SOFT_RESET_FILE); // delete realm file if there are schema conflicts
+    }
 
     const realm_t** realm = static_cast<const realm_t**>(lua_newuserdata(L, sizeof(realm_t*)));
     luaL_setmetatable(L, RealmHandle);
     *realm = realm_open(config);
     realm_release(config);
+    realm_release(sync_config);
     if (!*realm) {
         // Exception ocurred while trying to open realm
         return _inform_realm_error(L);
     }
     _push_schema_info(L, *realm);
     return 2;
-
-    // TODO: Handle "sync" property on the configuration object
-
-    // Get realm sync config object
-    // RLM_API realm_sync_config_t* realm_sync_config_new(const realm_user_t*, const char* partition_value) RLM_API_NOEXCEPT;
-
-    // Set the sync config on the realm config
-    // RLM_API void realm_config_set_sync_config(realm_config_t*, realm_sync_config_t*);
-
 }
 
 static int _lib_realm_release(lua_State* L) {

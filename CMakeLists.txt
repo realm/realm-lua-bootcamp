@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(realm-lua)
 
 set(LUA_ENABLE_SHARED OFF)
-set(LUA_SUPPORT_DL ON)
+set(LUA_SUPPORT_DL ON CACHE BOOL "")
 add_subdirectory(external/lua EXCLUDE_FROM_ALL)
 
 set(REALM_BUILD_LIB_ONLY YES)

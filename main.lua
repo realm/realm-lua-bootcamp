@@ -2,7 +2,57 @@ local Realm = require "realm"
 local RealmApp = require "realm.app"
 local RealmCredentials = require "realm.credentials"
 
-local app = RealmApp:new({ appId = "MY_APP_ID" })
+-- EXAMPLE SYNC USAGE: --
+
+local APP_ID = "MY_APP_ID"
+local app = RealmApp.new({ appId = APP_ID })
+local currentUser = app:currentUser()
+local realmSync
+
+local coroutineOpenRealm = coroutine.create(function ()
+    realmSync = Realm.open({
+        schema = {
+            {
+                name = "StoreSync",
+                properties = {
+                    -- Use e.g. "city" as the partition key (configure on backend)
+                    city = "string",
+                    numEmployees = "int"
+                }
+            }
+        },
+        sync = {
+            user = currentUser,
+            -- Sync all the stores with partition key ("city") set to "Chicago".
+            partitionValue = "Chicago"
+            -- NOTE: There are more sync config props that could be set.
+        }
+    })
+end)
+
+local function registerAndLogIn(email, password)
+    -- When the registration is complete, the callback will be invoked.
+    app:registerEmail(email, password, function ()
+        -- When the login is complete, the callback will be invoked.
+        local credentials = RealmCredentials:emailPassword(email, password)
+        app:logIn(credentials, function (user)
+            currentUser = user
+            coroutine.resume(coroutineOpenRealm)
+        end)
+    end)
+end
+
+-- If there is a current user, it has been authenticated and is logged in,
+-- whereafter we resume the coroutine and open the realm. Otherwise we register
+-- a new user and log in before opening the realm.
+if currentUser then
+    coroutine.resume(coroutineOpenRealm)
+else
+    registerAndLogIn("jane@example.com", "12345")
+end
+
+
+-- EXAMPLE NON-SYNC USAGE: --
 
 ---@class Person
 ---@field name string
@@ -19,20 +69,8 @@ local realm = Realm.open({
                 age = "int"
             }
         }
-    },
-    -- EXAMPLE USAGE
-    -- sync = {
-    --     user = app.currentUser
-    --     -- NOTE: There are more sync config props that could be set.
-    -- }
+    }
 })
-
--- TODO:
--- Will have to handle "registerEmail" and "logIn" as promises
--- EXAMPLE USAGE:
--- app:registerEmail("jane@example.com", "12345")
--- local credentials = RealmCredentials:emailPassword("jane@example.com", "12345")
--- local user = app:logIn(credentials)
 
 ---@class RealmCollectionChanges
 ---@field deletions table<number, number>

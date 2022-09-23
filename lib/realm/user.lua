@@ -1,16 +1,28 @@
+local native = require "_realm_native"
+
 ---@class RealmUser
----@field id string
----@field _app RealmApp
+---@field id string The id of the user.
+---@field _handle userdata The realm user userdata.
 local RealmUser = {}
+
+---@param handle userdata The realm user userdata.
+---@return RealmUser | nil
+function RealmUser._new(handle)
+    if handle == nil then
+        return nil
+    end
+
+    local user = {
+        _handle = handle,
+        id = native.realm_user_get_id(handle)
+    }
+    user = setmetatable(user, RealmUser)
+    return user
+end
 
 ---Log out the user by removing its credentials.
 function RealmUser:logOut()
-
-    -- Call native.realm_user_log_out which should call C: realm_user_log_out
-
+    native.realm_user_log_out(self._handle)
 end
-
--- The id field on the user should:
---     Call native.realm_user_get_id which should call C: realm_user_get_identity
 
 return RealmUser

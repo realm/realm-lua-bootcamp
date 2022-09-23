@@ -1,58 +1,192 @@
+#include <lua.hpp>
+
+// TODO: Extract 'realm_lua_userdata' as it's also used by realm_notifications.cpp
+struct realm_lua_userdata {
+    lua_State* L;
+    int callback_reference;
+};
+
+#define realm_userdata_t realm_lua_userdata*
+
 #include "realm_app.hpp"
+#include "realm_util.hpp"
 #include "curl_http_transport.hpp"
 
+// TODO: Extract 'free_userdata' as it's also used by realm_notifications.cpp
+static void free_userdata(realm_lua_userdata* userdata) {
+    luaL_unref(userdata->L, LUA_REGISTRYINDEX, userdata->callback_reference);
+    delete userdata;
+}
+
+static void on_register_email_complete(realm_lua_userdata* userdata, const realm_app_error_t* error) {
+    lua_State* L = userdata->L;
+
+    // Get the Lua callback function from the register and push onto the stack.
+    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->callback_reference);
+
+    // Push an error message onto the stack as an argument to the user's callback if needed.
+    int num_callback_args = 0;
+    if (error) {
+        lua_pushstring(L, error->message);
+        num_callback_args = 1;
+    }
+
+    // Call the user's callback function.
+    int status = lua_pcall(L, num_callback_args, 0, 0);
+    if (status != LUA_OK) {
+        // TODO: Print with lua_writestringerror
+        // message: "Could not call the 'register email' callback function."
+        return;
+    }
+}
+
+static void on_log_in_complete(realm_lua_userdata* userdata, realm_user_t* user_arg, const realm_app_error_t* error) {
+    lua_State* L = userdata->L;
+
+    // Get the Lua callback function from the register and push onto the stack.
+    lua_rawgeti(L, LUA_REGISTRYINDEX, userdata->callback_reference);
+
+    // Push the realm user onto the stack and set its metatable (or push nil as
+    // the realm user and an error message) as argument(s) to the user's callback.
+    int num_callback_args = 1;
+    if (user_arg) {
+        realm_user_t** user = static_cast<realm_user_t**>(lua_newuserdata(L, sizeof(realm_user_t*)));
+        luaL_setmetatable(L, RealmHandle);
+        *user = (realm_user_t*)realm_clone(user_arg);
+    }
+    else {
+        lua_pushnil(L);
+        lua_pushstring(L, error->message);
+        num_callback_args = 2;
+    }
+
+    // Call the user's callback function.
+    int status = lua_pcall(L, num_callback_args, 0, 0);
+    if (status != LUA_OK) {
+        // TODO: Print with lua_writestringerror
+        // message: "Could not call the 'log in' callback function."
+        return;
+    }
+}
+
 int _lib_realm_app_create(lua_State* L) {
+    // Get arguments needed to create configuration objects.
+    const char* app_id = (const char*)lua_tostring(L, 1);
+    const realm_http_transport_t* http_transport = make_curl_http_transport();
 
-    realm_http_transport* transport = make_curl_http_transport();
+    // Get configuration objects needed to create a realm app.
+    const realm_app_config_t* app_config = realm_app_config_new(app_id, http_transport);
+    const realm_sync_client_config_t* sync_client_config = realm_sync_client_config_new();
 
-    // realm.h:
+    // Create and push the realm app and set its metatable.
+    realm_app_t** app = static_cast<realm_app_t**>(lua_newuserdata(L, sizeof(realm_app_t*)));
+    luaL_setmetatable(L, RealmHandle);
+    *app = realm_app_create(app_config, sync_client_config);
 
-    // Create a realm_app_config_t
-    // RLM_API realm_app_config_t* realm_app_config_new(const char* app_id,
-    //                                              const realm_http_transport_t* http_transport) RLM_API_NOEXCEPT;
+    realm_release(http_transport);
 
-    // Possibly set more fields on the config object (if also passed from Lua) (but it's optional)
-    // RLM_API void realm_app_config_set_base_url(realm_app_config_t*, const char*) RLM_API_NOEXCEPT;
-    // RLM_API void realm_app_config_set_local_app_name(realm_app_config_t*, const char*) RLM_API_NOEXCEPT;
-    // RLM_API void realm_app_config_set_local_app_version(realm_app_config_t*, const char*) RLM_API_NOEXCEPT;
+    if (!*app) {
+        return _inform_realm_error(L);
+    }
 
-    // Create a realm_app_t
-    // RLM_API realm_app_t* realm_app_create(const realm_app_config_t*, const realm_sync_client_config_t*);
-
-    realm_release(transport);
     return 1;
 }
 
 int _lib_realm_app_register_email(lua_State* L) {
+    // Get arguments.
+    realm_app_t** app = (realm_app_t**)lua_touserdata(L, 1);
+    const char* email = (const char*)lua_tostring(L, 2);
+    const char* password_data = (const char*)lua_tostring(L, 3);
+    realm_string_t password {
+        .data = password_data,
+        .size = sizeof(*password_data),
+    };
 
-    // realm.h
+    // Pop 4th argument/top of stack (the Lua function) from the stack and save a
+    // reference to it in the register. "callback_reference" is the register location.
+    int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    // RLM_API bool realm_app_email_password_provider_client_register_email(realm_app_t* app, const char* email,
-    //                                                                  realm_string_t password,
-    //                                                                  realm_app_void_completion_func_t callback,
-    //                                                                  realm_userdata_t userdata,
-    //                                                                  realm_free_userdata_func_t userdata_free);
+    // Create a pointer to userdata for use in the callback when called.
+    realm_lua_userdata* userdata = new realm_lua_userdata;
+    userdata->L = L;
+    userdata->callback_reference = callback_reference;
+
+    // Register the email.
+    bool status = realm_app_email_password_provider_client_register_email(
+        *app,
+        email,
+        password,
+        on_register_email_complete,
+        userdata,
+        free_userdata
+    );
+    if (!status) {
+        return _inform_realm_error(L);
+    }
 
     return 0;
 }
 
 int _lib_realm_app_credentials_new_email_password(lua_State* L) {
+    // Get arguments.
+    const char* email = (const char*)lua_tostring(L, 1);
+    const char* password_data = (const char*)lua_tostring(L, 2);
+    realm_string_t password {
+        .data = password_data,
+        .size = sizeof(*password_data),
+    };
 
-    // realm.h
-
-    // RLM_API realm_app_credentials_t* realm_app_credentials_new_email_password(const char* email,
-    //                                                                       realm_string_t password) RLM_API_NOEXCEPT;
+    // Create and push the realm app credentials and set its metatable.
+    realm_app_credentials_t** app_credentials = static_cast<realm_app_credentials_t**>(lua_newuserdata(L, sizeof(realm_app_credentials_t*)));
+    luaL_setmetatable(L, RealmHandle);
+    *app_credentials = realm_app_credentials_new_email_password(email, password);
 
     return 1;
 }
 
 int _lib_realm_app_log_in(lua_State* L) {
+    // Get arguments.
+    realm_app_t** app = (realm_app_t**)lua_touserdata(L, 1);
+    realm_app_credentials_t** app_credentials = (realm_app_credentials_t**)lua_touserdata(L, 2);
 
-    // realm.h
+    // Pop 3rd argument/top of stack (the Lua function) from the stack and save a
+    // reference to it in the register. "callback_reference" is the register location.
+    int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
 
-    // RLM_API bool realm_app_log_in_with_credentials(realm_app_t* app, realm_app_credentials_t* credentials,
-    //                                            realm_app_user_completion_func_t callback, realm_userdata_t userdata,
-    //                                            realm_free_userdata_func_t userdata_free);
+    // Create a pointer to userdata for use in the callback when called.
+    realm_lua_userdata* userdata = new realm_lua_userdata;
+    userdata->L = L;
+    userdata->callback_reference = callback_reference;
+
+    // Log in.
+    int status = realm_app_log_in_with_credentials(
+        *app,
+        *app_credentials,
+        on_log_in_complete,
+        userdata,
+        free_userdata
+    );
+    if (!status) {
+        return _inform_realm_error(L);
+    }
 
     return 0;
+}
+
+int _lib_realm_app_get_current_user(lua_State* L) {
+    // Get argument.
+    realm_app_t** app = (realm_app_t**)lua_touserdata(L, 1);
+
+    // Create and push the user (or nil) onto the stack.
+    realm_user_t* user = realm_app_get_current_user(*app);
+    if (user) {
+        realm_user_t** userData = static_cast<realm_user_t**>(lua_newuserdata(L, sizeof(realm_user_t*)));
+        luaL_setmetatable(L, RealmHandle);
+        *userData = user;
+    }
+    else {
+        lua_pushnil(L);
+    }
+
+    return 1;
 }

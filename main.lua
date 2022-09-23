@@ -2,8 +2,7 @@
 local uv = require "luv"
 local Realm = require "realm"
 require "realm.scheduler.libuv"
-local RealmApp = require "realm.app"
-local RealmCredentials = require "realm.credentials"
+local App = require "realm.app"
 
 local signal = uv.new_signal()
 signal:start("sigint", function()
@@ -24,7 +23,7 @@ end
 -- EXAMPLE SYNC USAGE: --
 
 local APP_ID = "application-0-oltdi"
-local app = RealmApp.new({ appId = APP_ID })
+local app = App.new({ appId = APP_ID })
 local currentUser = app:currentUser()
 local realmSync --- @type Realm
 
@@ -56,7 +55,7 @@ local function registerAndLogIn(email, password)
     app:registerEmail(email, password, function (err)
         if not err then
             -- When the login is complete, the callback will be invoked.
-            local credentials = RealmCredentials:emailPassword(email, password)
+            local credentials = App.credentials.emailPassword(email, password)
             app:logIn(credentials, function (user, err)
                 if not err then
                     currentUser = user

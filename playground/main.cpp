@@ -5,6 +5,8 @@
 
 #include "../src/realm_native_lib.hpp"
 #include "../src/realm_scheduler.hpp"
+#include "../src/realm_app.hpp"
+#include "../src/realm_user.hpp"
 
 static int msghandler(lua_State *L) {
     const char *msg = lua_tostring(L, 1);
@@ -82,6 +84,8 @@ int main(int argc, char** argv) {
     luaL_openlibs(L);
     luaL_requiref(L, "realm.native", luaopen_realm_native, 0);
     luaL_requiref(L, "realm.scheduler.libuv.native", luaopen_realm_scheduler_libuv_native, 0);
+    luaL_requiref(L, "realm.app.native", luaopen_realm_app_native, 0);
+    luaL_requiref(L, "realm.app.user.native", luaopen_realm_app_user_native, 0);
 
     const char* file = SCRIPT_SOURCE_PATH"/main.lua";
 

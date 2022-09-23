@@ -8,8 +8,6 @@
 #include "realm_native_lib.hpp"
 #include "realm_schema.hpp"
 #include "realm_util.hpp"
-#include "realm_app.hpp"
-#include "realm_user.hpp"
 
 static int _lib_realm_open(lua_State* L) {
     luaL_checktype(L, 1, LUA_TTABLE);
@@ -427,13 +425,6 @@ static int _lib_realm_get_list(lua_State *L){
 }
 
 static const luaL_Reg lib[] = {
-  {"realm_app_create",                          _lib_realm_app_create},
-  {"realm_app_register_email",                  _lib_realm_app_register_email},
-  {"realm_app_credentials_new_email_password",  _lib_realm_app_credentials_new_email_password},
-  {"realm_app_log_in",                          _lib_realm_app_log_in},
-  {"realm_app_get_current_user",                _lib_realm_app_get_current_user},
-  {"realm_user_log_out",                        _lib_realm_user_log_out},
-  {"realm_user_get_id",                         _lib_realm_user_get_id},
   {"realm_open",                                _lib_realm_open},
   {"realm_release",                             _lib_realm_release},
   {"realm_begin_write",                         _lib_realm_begin_write},

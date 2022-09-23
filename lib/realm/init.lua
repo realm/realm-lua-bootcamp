@@ -66,13 +66,9 @@ function Realm:objects(className)
     return RealmResults:new(self, resultHandle, classInfo)
 end
 
----@param config Realm.Config | Realm.Sync.Config
+---@param config Realm.Config
 ---@return Realm
 function Realm.open(config)
-    if config.sync then
-        config.sync.user = config.sync.user._handle
-    end
-
     local _handle, _schema = native.realm_open(config)
     local self = setmetatable({
         _handle = _handle,

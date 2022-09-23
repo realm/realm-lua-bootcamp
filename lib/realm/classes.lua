@@ -6,12 +6,9 @@
 ---@field path string
 ---@field schemaVersion integer
 ---@field schema Realm.Schema.ClassDefinition[]
+---@field sync Realm.Config.Sync?
 
----@class Realm.Sync.Config
----@field schema Realm.Schema.ClassDefinition[]
----@field sync Realm.Sync.Config.SyncPropertyDefinition
-
----@class Realm.Sync.Config.SyncPropertyDefinition
+---@class Realm.Config.Sync
 ---@field user RealmUser The currently logged in user.
 ---@field partitionValue string The value used for syncing objects with its partition key field set to this value.
 

@@ -14,7 +14,7 @@ end
 local module = {}
 
 ---@param handle userdata The realm user userdata.
----@return Realm.App.User | nil
+---@return Realm.App.User?
 function module._new(handle)
     if handle == nil then
         return nil

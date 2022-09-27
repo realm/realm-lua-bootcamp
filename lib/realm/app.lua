@@ -11,7 +11,7 @@ local App = {}
 App.__index = App
 
 ---Get the currently logged in user.
----@return Realm.App.User | nil
+---@return Realm.App.User?
 function App:currentUser()
     local userHandle = native.app_get_current_user(self._handle)
     return RealmUser._new(userHandle)

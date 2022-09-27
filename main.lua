@@ -80,6 +80,22 @@ else
     registerAndLogIn("jane@example.com", "123456")
 end
 
+local stores = realm:objects("StoreSync")
+print("Listening for Store collection notifications...")
+local storesToken = stores:addListener(function (collection, changes)
+    for _, index in ipairs(changes.deletions) do
+        print("Deleted store at index " .. index)
+    end
+
+    for _, index in ipairs(changes.insertions) do
+        print("Added store with id " .. collection[index]._id)
+    end
+
+    for _, index in ipairs(changes.modificationsNew) do
+        print("Modified store with id " .. collection[index]._id)
+    end
+end)
+
 realm:write(function()
     -- Create objects that should sync (city = "Chicago")
     local storeA = realm:create("StoreSync", {
@@ -99,22 +115,6 @@ realm:write(function()
     assert(storeB)
     assert(storeB.city == "Chicago", "'city' property does not match expected.")
     assert(storeB.numEmployees == 20, "'numEmployees' property does not match expected.")
-end)
-
-local stores = realm:objects("StoreSync")
-print("Listening for Store collection notifications...")
-local storesToken = stores:addListener(function (collection, changes)
-    for _, index in ipairs(changes.deletions) do
-        print("Deleted store at index " .. index)
-    end
-
-    for _, index in ipairs(changes.insertions) do
-        print("Added store with id " .. collection[index]._id)
-    end
-
-    for _, index in ipairs(changes.modificationsNew) do
-        print("Modified store with id " .. collection[index]._id)
-    end
 end)
 
 local firstStore = stores[1]

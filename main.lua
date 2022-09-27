@@ -54,7 +54,7 @@ end)
 local function registerAndLogIn(email, password)
     -- When the registration is complete, the callback will be invoked.
     app:registerEmail(email, password, function (err)
-        if not err then
+        if not err or err == "name already in use" then
             -- When the login is complete, the callback will be invoked.
             local credentials = App.credentials.emailPassword(email, password)
             app:logIn(credentials, function (user, err)

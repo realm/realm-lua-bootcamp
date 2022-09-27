@@ -99,17 +99,6 @@ realm:write(function()
     assert(storeB)
     assert(storeB.city == "Chicago", "'city' property does not match expected.")
     assert(storeB.numEmployees == 20, "'numEmployees' property does not match expected.")
-
-    -- Create object that should not sync (city != "Chicago")
-    -- Generates a BadChangeset error
-    -- local storeC = realmSync:create("StoreSync", {
-    --     _id = math.random(1, 100000),
-    --     city = "Austin",
-    --     numEmployees = 5
-    -- })
-    -- assert(storeC)
-    -- assert(storeC.city == "Austin", "'city' property does not match expected.")
-    -- assert(storeC.numEmployees == 10, "'numEmployees' property does not match expected.")
 end)
 
 local stores = realm:objects("StoreSync")

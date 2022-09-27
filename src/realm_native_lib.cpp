@@ -23,16 +23,55 @@ static int _lib_realm_open(lua_State* L) {
     realm_config_set_schema(config, schema);
     realm_release(schema);
 
+    realm_sync_config_t* sync_config = nullptr;
+    lua_getfield(L, 1, "sync");
+    if (lua_istable(L, -1)) {
+        const char* partition_value;
+        lua_getfield(L, -1, "partitionValue");
+        if (lua_isstring(L, -1)) {
+            partition_value = lua_tostring(L, -1);
+        } else {
+            return _inform_error(L, "sync.partitionValue must be a string, got %1.", lua_typename(L, lua_type(L, -1)));
+        }
+        lua_pop(L, 1);
+
+        realm_user_t* user = nullptr;
+        lua_getfield(L, -1, "user");
+        if (lua_istable(L, -1)) {
+            lua_getfield(L, -1, "_handle");
+            if (auto** userdata = static_cast<realm_user_t**>(luaL_checkudata(L, -1, RealmHandle))) {
+                user = *userdata;
+            }
+            lua_pop(L, 1);
+        }
+        lua_pop(L, 1);
+        if (!user) {
+            return _inform_error(L, "sync.user must be a User object.");
+        }
+
+        sync_config = realm_sync_config_new(user, partition_value);
+        realm_config_set_sync_config(config, sync_config);
+    }
+    lua_pop(L, 1);
+
     lua_getfield(L, 1, "path");
-    luaL_checkstring(L, -1);
-    realm_config_set_path(config, lua_tostring(L, -1));
+    if (lua_isstring(L, -1)) {
+        realm_config_set_path(config, lua_tostring(L, -1));
+    } else if (sync_config) {
+        char* path = realm_app_sync_client_get_default_file_path_for_realm(sync_config, nullptr);
+        realm_config_set_path(config, path);
+        realm_free(path);
+    } else {
+        realm_config_set_path(config, "default.realm");
+    }
     lua_pop(L, 1);
 
     lua_getfield(L, 1, "schemaVersion");
-    luaL_checkinteger(L, -1);
-    realm_config_set_schema_version(config, lua_tointeger(L, -1));
-    // TODO?: add ability to change this through config object? 
-    realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_SOFT_RESET_FILE); // delete realm file if there are schema conflicts
+    if (lua_isinteger(L, -1)) {
+        realm_config_set_schema_version(config, lua_tonumber(L, -1));
+    } else {
+        realm_config_set_schema_version(config, 0);
+    }
     lua_pop(L, 1);
     
     lua_getfield(L, 1, "_cached");
@@ -40,6 +79,13 @@ static int _lib_realm_open(lua_State* L) {
         realm_config_set_cached(config, lua_toboolean(L, -1));
     }
     lua_pop(L, 1);
+    
+    if (sync_config) {
+        realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_ADDITIVE_EXPLICIT);
+    } else {
+        // TODO?: add ability to change this through config object? 
+        realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_SOFT_RESET_FILE); // delete realm file if there are schema conflicts
+    }
 
     if (realm_scheduler_t** scheduler = static_cast<realm_scheduler_t**>(luaL_checkudata(L, 2, RealmHandle))) {
         realm_config_set_scheduler(config, *scheduler);
@@ -49,6 +95,7 @@ static int _lib_realm_open(lua_State* L) {
     luaL_setmetatable(L, RealmHandle);
     *realm = realm_open(config);
     realm_release(config);
+    realm_release(sync_config);
     if (!*realm) {
         // Exception ocurred while trying to open realm
         return _inform_realm_error(L);
@@ -378,27 +425,27 @@ static int _lib_realm_get_list(lua_State *L){
 }
 
 static const luaL_Reg lib[] = {
-  {"realm_open",                            _lib_realm_open},
-  {"realm_release",                         _lib_realm_release},
-  {"realm_begin_write",                     _lib_realm_begin_write},
-  {"realm_commit_transaction",              _lib_realm_commit_transaction},
-  {"realm_cancel_transaction",              _lib_realm_cancel_transaction},
-  {"realm_object_create",                   _lib_realm_object_create},
-  {"realm_object_create_with_primary_key",  _lib_realm_object_create_with_primary_key},
-  {"realm_object_delete",                   _lib_realm_object_delete},
-  {"realm_object_is_valid",                 _lib_realm_object_is_valid},
-  {"realm_set_value",                       _lib_realm_set_value},
-  {"realm_get_value",                       _lib_realm_get_value},
-  {"realm_object_get_all",                  _lib_realm_object_get_all},
-  {"realm_object_add_listener",             _lib_realm_object_add_listener},
-  {"realm_results_get",                     _lib_realm_results_get},
-  {"realm_results_count",                   _lib_realm_results_count},
-  {"realm_results_add_listener",            _lib_realm_results_add_listener},
-  {"realm_results_filter",                  _lib_realm_results_filter},
-  {"realm_list_insert",                     _lib_realm_list_insert},
-  {"realm_list_get",                        _lib_realm_list_get},
-  {"realm_list_size",                       _lib_realm_list_size},
-  {"realm_get_list",                       _lib_realm_get_list},
+  {"realm_open",                                _lib_realm_open},
+  {"realm_release",                             _lib_realm_release},
+  {"realm_begin_write",                         _lib_realm_begin_write},
+  {"realm_commit_transaction",                  _lib_realm_commit_transaction},
+  {"realm_cancel_transaction",                  _lib_realm_cancel_transaction},
+  {"realm_object_create",                       _lib_realm_object_create},
+  {"realm_object_create_with_primary_key",      _lib_realm_object_create_with_primary_key},
+  {"realm_object_delete",                       _lib_realm_object_delete},
+  {"realm_set_value",                           _lib_realm_set_value},
+  {"realm_get_value",                           _lib_realm_get_value},
+  {"realm_object_is_valid",                     _lib_realm_object_is_valid},
+  {"realm_object_get_all",                      _lib_realm_object_get_all},
+  {"realm_object_add_listener",                 _lib_realm_object_add_listener},
+  {"realm_results_get",                         _lib_realm_results_get},
+  {"realm_results_count",                       _lib_realm_results_count},
+  {"realm_results_add_listener",                _lib_realm_results_add_listener},
+  {"realm_results_filter",                      _lib_realm_results_filter},
+  {"realm_list_insert",                         _lib_realm_list_insert},
+  {"realm_list_get",                            _lib_realm_list_get},
+  {"realm_list_size",                           _lib_realm_list_size},
+  {"realm_get_list",                            _lib_realm_get_list},
   {NULL, NULL}
 };
 

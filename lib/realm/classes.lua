@@ -11,6 +11,7 @@
 ---@field schemaVersion integer
 ---@field schema Realm.Schema.ClassDefinition[]
 ---@field scheduler Realm.Scheduler?
+---@field sync Realm.Config.Sync?
 ---@field _cached boolean? return a cached Realm instance, default is true
 
 ---@alias Realm.Handle userdata
@@ -27,7 +28,11 @@
 ---@field modificationsOld table<number, number>
 ---@field modificationsNew table<number, number>
 
----@alias Realm.CollectionChanges.Callback fun(results: Realm.Results, changes: Realm.CollectionChanges) 
+---@alias Realm.CollectionChanges.Callback fun(results: Realm.Results, changes: Realm.CollectionChanges)
+
+---@class Realm.Config.Sync
+---@field user Realm.App.User The currently logged in user.
+---@field partitionValue string The value used for syncing objects with its partition key field set to this value.
 
 ---@class Realm.Schema.ClassInformation Schema classes information returned after opening a Realm
 ---@field name string Class name

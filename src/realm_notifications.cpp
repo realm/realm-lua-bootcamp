@@ -1,29 +1,14 @@
-#include "realm_notifications.hpp"
-
-// Note: Needs to be defined before realm.h
-struct realm_lua_userdata {
-    lua_State* L;
-    int callback_reference;
-    virtual ~realm_lua_userdata() = default;
-};
-
-#define realm_userdata_t realm_lua_userdata*
+#define realm_userdata_t struct realm_lua_userdata*
 
 #include <realm.h>
 //#include <realm/object-store/c_api/types.hpp>
 #include "realm_util.hpp"
+#include "realm_notifications.hpp"
 
 // TODO: Use this for _lib_realm_object_add_listener
 // struct realm_lua_userdata_object : realm_lua_userdata {
 //     const realm::ObjectSchema& schema;
 // };
-
-// Get the callback reference from the registry and unreference it
-// so that Lua can garbage collect it.
-static void free_userdata(realm_lua_userdata* userdata) {
-    luaL_unref(userdata->L, LUA_REGISTRYINDEX, userdata->callback_reference);
-    delete userdata;
-}
 
 static void populate_lua_object_changes_table(lua_State* L, int table_index, const char* field_name, realm_property_key_t* changes_properties, size_t changes_properties_size) {
     // Push an empty table onto the stack acting as a Lua array.
@@ -167,7 +152,7 @@ int _lib_realm_results_add_listener(lua_State* L) {
     *notification_token = realm_results_add_notification_callback(
         *results,
         userdata,
-        free_userdata,
+        free_lua_userdata,
         nullptr,
         on_collection_change
     );
@@ -204,7 +189,7 @@ int _lib_realm_object_add_listener(lua_State* L) {
     *notification_token = realm_object_add_notification_callback(
         *object,
         userdata,
-        free_userdata,
+        free_lua_userdata,
         nullptr,
         on_object_change
     );

@@ -6,6 +6,9 @@ add_library(realm-lua-objects OBJECT
     realm_native_lib.cpp
     realm_notifications.cpp
     realm_scheduler.cpp
+    realm_app.cpp
+    realm_user.cpp
+    curl_http_transport.cpp
 )
 
 target_include_directories(realm-lua-objects PUBLIC
@@ -17,6 +20,7 @@ target_link_libraries(realm-lua-objects PUBLIC
     Realm::ObjectStore 
     Realm::QueryParser
     RealmFFIStatic
+    CURL::libcurl
 )
 
 add_library(realm-lua MODULE)

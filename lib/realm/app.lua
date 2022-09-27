@@ -34,7 +34,6 @@ function App:logIn(credentials, onLoggedIn)
         onLoggedIn(RealmUser._new(userHandle), error)
     end
     native.app_log_in(self._handle, credentials, callback)
-
 end
 
 local module = {}

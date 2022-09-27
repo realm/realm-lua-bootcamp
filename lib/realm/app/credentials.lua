@@ -9,7 +9,6 @@ local credentials = {}
 ---@return Realm.App.Credentials
 function credentials.anonymous(reuseCredentials)
     return native.app_credentials_new_anonymous(reuseCredentials);
-
 end
 
 ---Get a credentials object to use for authenticating a user with email and password.

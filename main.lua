@@ -102,21 +102,29 @@ realm:write(function()
 end)
 
 local stores = realm:objects("StoreSync")
-local t1 = stores:addListener(function (collection, changes)
-    for _, index in ipairs(changes.insertions) do
-        print("Added Store with id "..collection[index]._id)
+print("Listening for Store collection notifications...")
+local storesToken = stores:addListener(function (collection, changes)
+    for _, index in ipairs(changes.deletions) do
+        print("Deleted store at index " .. index)
     end
 
-    for _, index in ipairs(changes.deletions) do
-        print("Deleted store at index "..index)
+    for _, index in ipairs(changes.insertions) do
+        print("Added store with id " .. collection[index]._id)
+    end
+
+    for _, index in ipairs(changes.modificationsNew) do
+        print("Modified store with id " .. collection[index]._id)
     end
 end)
 
 local firstStore = stores[1]
-print("Listening for object notifications on Store with id "..firstStore._id)
-local t2 = stores[1]:addListener(function (object, changes)
-    if #changes.modifiedProperties > 0 then
-        print("Modified Store with id "..object._id)
+local firstStoreId = firstStore._id
+print("Listening for object notifications on Store with id " .. firstStoreId .. "...")
+local firstStoreToken = firstStore:addListener(function (object, changes)
+    if changes.isDeleted then
+        print("Deleted store with id " .. firstStoreId)
+    elseif #changes.modifiedProperties > 0 then
+        print("Modified store with id " .. object._id)
     end
 end)
 

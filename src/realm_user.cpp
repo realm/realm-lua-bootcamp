@@ -1,7 +1,7 @@
 #include "realm_user.hpp"
 #include "realm_util.hpp"
 
-static int user_log_out(lua_State* L) {
+static int lib_realm_user_log_out(lua_State* L) {
     // Get argument.
     realm_user_t** user = (realm_user_t**)lua_touserdata(L, 1);
 
@@ -14,7 +14,7 @@ static int user_log_out(lua_State* L) {
     return 0;
 }
 
-static int user_get_identity(lua_State* L) {
+static int lib_realm_user_get_identity(lua_State* L) {
     // Get argument.
     const realm_user_t** user = (const realm_user_t**)lua_touserdata(L, 1);
 
@@ -26,8 +26,8 @@ static int user_get_identity(lua_State* L) {
 
 extern "C" int luaopen_realm_app_user_native(lua_State* L) {
     luaL_Reg funcs[] = {
-        {"user_log_out",      user_log_out},
-        {"user_get_identity", user_get_identity},
+        {"realm_user_log_out",      lib_realm_user_log_out},
+        {"realm_user_get_identity", lib_realm_user_get_identity},
         {NULL, NULL}
     };
     luaL_newlib(L, funcs);

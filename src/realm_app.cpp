@@ -49,7 +49,7 @@ static void on_log_in_complete(realm_lua_userdata* userdata, realm_user_t* user_
     log_lua_error(L, status);
 }
 
-static int app_create(lua_State* L) {
+static int lib_realm_app_create(lua_State* L) {
     // Get arguments needed to create configuration objects.
     const char* app_id = (const char*)lua_tostring(L, 1);
     realm_http_transport_t* http_transport = make_curl_http_transport();
@@ -82,7 +82,7 @@ static int app_create(lua_State* L) {
     return 1;
 }
 
-static int app_email_password_provider_client_register_email(lua_State* L) {
+static int lib_realm_app_email_password_provider_client_register_email(lua_State* L) {
     // Get arguments.
     realm_app_t** app = (realm_app_t**)lua_touserdata(L, 1);
     const char* email = (const char*)lua_tostring(L, 2);
@@ -118,7 +118,7 @@ static int app_email_password_provider_client_register_email(lua_State* L) {
     return 0;
 }
 
-static int app_credentials_new_email_password(lua_State* L) {
+static int lib_realm_app_credentials_new_email_password(lua_State* L) {
     // Get arguments.
     const char* email = (const char*)lua_tostring(L, 1);
     size_t password_len;
@@ -136,7 +136,7 @@ static int app_credentials_new_email_password(lua_State* L) {
     return 1;
 }
 
-static int app_log_in(lua_State* L) {
+static int lib_realm_app_log_in_with_credentials(lua_State* L) {
     // Get arguments.
     realm_app_t** app = (realm_app_t**)lua_touserdata(L, 1);
     realm_app_credentials_t** app_credentials = (realm_app_credentials_t**)lua_touserdata(L, 2);
@@ -165,7 +165,7 @@ static int app_log_in(lua_State* L) {
     return 0;
 }
 
-static int app_get_current_user(lua_State* L) {
+static int lib_realm_app_get_current_user(lua_State* L) {
     // Get argument.
     realm_app_t** app = (realm_app_t**)lua_touserdata(L, 1);
 
@@ -183,7 +183,7 @@ static int app_get_current_user(lua_State* L) {
     return 1;
 }
 
-static int app_credentials_new_anonymous(lua_State* L) {
+static int lib_realm_app_credentials_new_anonymous(lua_State* L) {
     bool reuse_credentials;
     if (lua_gettop(L) == 1) {
         reuse_credentials = lua_toboolean(L, 1);
@@ -199,12 +199,12 @@ static int app_credentials_new_anonymous(lua_State* L) {
 
 extern "C" int luaopen_realm_app_native(lua_State* L) {
     luaL_Reg funcs[] = {
-        {"app_create",                                        app_create},
-        {"app_credentials_new_anonymous",                     app_credentials_new_anonymous},
-        {"app_credentials_new_email_password",                app_credentials_new_email_password},
-        {"app_email_password_provider_client_register_email", app_email_password_provider_client_register_email},
-        {"app_get_current_user",                              app_get_current_user},
-        {"app_log_in_with_credentials",                       app_log_in},
+        {"realm_app_create",                                        lib_realm_app_create},
+        {"realm_app_credentials_new_anonymous",                     lib_realm_app_credentials_new_anonymous},
+        {"realm_app_credentials_new_email_password",                lib_realm_app_credentials_new_email_password},
+        {"realm_app_email_password_provider_client_register_email", lib_realm_app_email_password_provider_client_register_email},
+        {"realm_app_get_current_user",                              lib_realm_app_get_current_user},
+        {"realm_app_log_in_with_credentials",                       lib_realm_app_log_in_with_credentials},
         {NULL, NULL}
     };
     luaL_newlib(L, funcs);

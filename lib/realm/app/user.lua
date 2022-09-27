@@ -8,7 +8,7 @@ User.__index = User
 
 ---Log out the user by removing its credentials.
 function User:logOut()
-    native.user_log_out(self._handle)
+    native.realm_user_log_out(self._handle)
 end
 
 local module = {}
@@ -22,7 +22,7 @@ function module._new(handle)
 
     local user = {
         _handle = handle,
-        identity = native.user_get_identity(handle)
+        identity = native.realm_user_get_identity(handle)
     }
     user = setmetatable(user, User)
     return user

@@ -13,7 +13,7 @@ App.__index = App
 ---Get the currently logged in user.
 ---@return Realm.App.User?
 function App:currentUser()
-    local userHandle = native.app_get_current_user(self._handle)
+    local userHandle = native.realm_app_get_current_user(self._handle)
     return RealmUser._new(userHandle)
 end
 
@@ -22,7 +22,7 @@ end
 ---@param password string The password to associate with the email.
 ---@param onRegistered fun(error: any?) The callback to be invoked when registered.
 function App:registerEmail(email, password, onRegistered)
-    native.app_email_password_provider_client_register_email(self._handle, email, password, onRegistered)
+    native.realm_app_email_password_provider_client_register_email(self._handle, email, password, onRegistered)
 end
 
 ---Log in a user.
@@ -33,7 +33,7 @@ function App:logIn(credentials, onLoggedIn)
     local function callback(userHandle, error)
         onLoggedIn(RealmUser._new(userHandle), error)
     end
-    native.app_log_in(self._handle, credentials, callback)
+    native.realm_app_log_in_with_credentials(self._handle, credentials, callback)
 end
 
 local module = {}
@@ -42,7 +42,7 @@ local module = {}
 ---@return Realm.App
 function module.new(config)
     local app = {
-        _handle = native.app_create(config.appId)
+        _handle = native.realm_app_create(config.appId)
     }
     app = setmetatable(app, App)
     return app

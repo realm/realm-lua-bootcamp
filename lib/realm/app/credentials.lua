@@ -8,7 +8,7 @@ local credentials = {}
 ---@param reuseCredentials boolean?
 ---@return Realm.App.Credentials
 function credentials.anonymous(reuseCredentials)
-    return native.app_credentials_new_anonymous(reuseCredentials);
+    return native.realm_app_credentials_new_anonymous(reuseCredentials);
 end
 
 ---Get a credentials object to use for authenticating a user with email and password.
@@ -16,7 +16,7 @@ end
 ---@param password string The password to associate with the email.
 ---@return Realm.App.Credentials
 function credentials.emailPassword(email, password)
-    return native.app_credentials_new_email_password(email, password)
+    return native.realm_app_credentials_new_email_password(email, password)
 end
 
 return credentials

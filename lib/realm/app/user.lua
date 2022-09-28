@@ -24,8 +24,8 @@ function module._new(handle)
         _handle = handle,
         identity = native.realm_user_get_identity(handle)
     }
-    user = setmetatable(user, User)
-    return user
+
+    return setmetatable(user, User)
 end
 
 return module

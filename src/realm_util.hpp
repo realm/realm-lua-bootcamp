@@ -11,11 +11,11 @@ static const char* RealmHandle = "_realm_handle";
 template <typename... Args>
 int _inform_error(lua_State* L, const char* format, Args&&... args) {
     lua_pushstring(L, realm::util::format(format, args...).c_str());
+
     return lua_error(L);
 }
 
-// Informs the user about the last error that occured in
-// Realm through realm_get_last_error.
+// Inform the user about the last error that occured in Realm.
 int _inform_realm_error(lua_State* L);
 
 inline int log_lua_error(lua_State* L, int status) {
@@ -24,28 +24,29 @@ inline int log_lua_error(lua_State* L, int status) {
         lua_writestringerror("%s\n", msg);
         lua_pop(L, 1);
     }
+
     return status;
 }
 
-// Converts a lua value on the stack into a corresponding realm value
+// Convert a Lua value on the stack into its corresponding Realm value.
 std::optional<realm_value_t> lua_to_realm_value(lua_State* L, int arg_index);
 
-// Converts a realm value to a corresponding lua value and pushes it onto the stack
+// Convert a Realm value to its corresponding Lua value and push it onto the stack.
 int realm_to_lua_value(lua_State* L, realm_t* realm, realm_value_t value);
 
-// Fetches property info based on an object and its property name
+// Fetch property info based on an object and its property name.
 std::optional<realm_property_info_t> get_property_info_by_name(lua_State* L, realm_t* realm, realm_object_t* object, const char* property_name);
 
-// Fetches property info based on an object and its property key
+// Fetch property info based on an object and its property key.
 std::optional<realm_property_info_t> get_property_info_by_key(lua_State* L, realm_t* realm, realm_object_t* object, realm_property_key_t property_key);
 
-// Checks whether given fullString ends with ending 
+// Check whether a given string ends with a specific set of characters.
 inline bool ends_with (const std::string_view& full_string, const std::string_view& ending) {
     if (full_string.length() >= ending.length()) {
         return (0 == full_string.compare (full_string.length() - ending.length(), ending.length(), ending));
-    } else {
-        return false;
     }
+
+    return false;
 }
 
 inline std::string_view lua_tostringview(lua_State* L, int index) {

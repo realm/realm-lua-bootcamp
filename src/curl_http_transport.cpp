@@ -45,6 +45,7 @@ size_t curl_write_cb(char* ptr, size_t size, size_t nmemb, std::string* response
     REALM_ASSERT(response);
     size_t realsize = size * nmemb;
     response->append(ptr, realsize);
+
     return realsize;
 }
 
@@ -68,6 +69,7 @@ size_t curl_header_cb(char* buffer, size_t size, size_t nitems, std::map<std::st
             std::cerr << "test transport skipping header: " << combined << std::endl;
         }
     }
+
     return nitems * size;
 }
 

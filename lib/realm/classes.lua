@@ -3,30 +3,33 @@
 ---@alias Realm.Schema.PropertyType string | "bool" | "int" | "float" | "string"
 
 ---Externally defined classes
+---@see Realm.App
+---@see Realm.App.User
 ---@see Realm.Object
 ---@see Realm.Results
+---@see Realm.List
 
 ---@class Realm.Config
----@field path string
----@field schemaVersion integer
----@field schema Realm.Schema.ClassDefinition[]
----@field scheduler Realm.Scheduler?
----@field sync Realm.Config.Sync?
----@field _cached boolean? return a cached Realm instance, default is true
+---@field path string The path to the realm being opened.
+---@field schemaVersion integer The version of the schema for the realm being opened.
+---@field schema Realm.Schema.ClassDefinition[] The schema containing all classes and their properties.
+---@field scheduler Realm.Scheduler? The scheduler which the realm should be bound to.
+---@field sync Realm.Config.Sync? The configuration for opening a synced realm.
+---@field _cached boolean? Whether to return a cached Realm instance, default is true.
 
 ---@alias Realm.Handle userdata
 
 ---@class Realm.ObjectChanges
----@field isDeleted boolean
----@field modifiedProperties table<number, number>  -- NOTE: Will change to table<number, string>
+---@field isDeleted boolean Whether the object has been deleted.
+---@field modifiedProperties number[] The property keys of all properties that were modified. -- NOTE: Will change to property names (string[])
 
 ---@alias Realm.ObjectChanges.Callback fun(object: Realm.Object, changes: Realm.ObjectChanges) 
 
 ---@class Realm.CollectionChanges
----@field deletions table<number, number>
----@field insertions table<number, number>
----@field modificationsOld table<number, number>
----@field modificationsNew table<number, number>
+---@field deletions number[] The indices of the deleted objects at their previous positions.
+---@field insertions number[] The indices of the added objects at their current positions.
+---@field modificationsOld number[] The indices of the modified objects at their previous positions.
+---@field modificationsNew number[] The indices of the modified objects at their current positions.
 
 ---@alias Realm.CollectionChanges.Callback fun(results: Realm.Results, changes: Realm.CollectionChanges)
 
@@ -34,35 +37,30 @@
 ---@field user Realm.App.User The currently logged in user.
 ---@field partitionValue string The value used for syncing objects with its partition key field set to this value.
 
----@class Realm.Schema.ClassInformation Schema classes information returned after opening a Realm
----@field name string Class name
----@field key integer Class key
----@field properties table<string, Realm.Schema.PropertyDefinition>
----@field primaryKey string
+---@class Realm.Schema.ClassInformation Schema classes information returned after opening a Realm.
+---@field name string The class name.
+---@field key integer The class key.
+---@field properties table<string, Realm.Schema.PropertyDefinition> The property names containing their definitions.
+---@field primaryKey string The property that is the primary key field.
+
+---@class Realm.Schema.ClassDefinition Schema classes definition used to open a Realm.
+---@field name string The class name.
+---@field primaryKey string? The property that is the primary key field.
+---@field properties table<string, Realm.Schema.PropertyDefinition | Realm.Schema.PropertyType> The property names containing their information.
 
 ---@class Realm.Schema.PropertyDefinition
----@field type Realm.Schema.PropertyType
----@field key number? Property key, only defined with properties from ClassInformation
----@field mapTo string?
----@field indexed boolean?
----@field optional boolean?
-
----@class Realm.Schema.ClassDefinition Schema classes definition used to open a Realm
----@field name string
----@field primaryKey string?
----@field properties table<string, Realm.Schema.PropertyDefinition | Realm.Schema.PropertyType>
-
----@class Realm.Schema.ClassInformation Schema classes information returned after opening a Realm
----@field key integer Class key
----@field properties table<string, Realm.Schema.PropertyInformation>
----@field primaryKey string?
+---@field type Realm.Schema.PropertyType The data type of the property.
+---@field key number? The property key, only defined with properties from ClassInformation.
+---@field mapTo string? The new name to map the property name to.
+---@field indexed boolean? Whether the property should be indexed.
+---@field optional boolean? Whether setting the property can be optional.
 
 ---@class Realm.Schema.PropertyInformation
----@field key userdata
----@field name string
----@field type PropertyInformation.Type
----@field objectType string?
----@field collectionType PropertyInformation.CollectionType?
+---@field key userdata The property key userdata.
+---@field name string The property name.
+---@field type PropertyInformation.Type The data type of the property.
+---@field objectType string? The object type of the property.
+---@field collectionType PropertyInformation.CollectionType? The collection type of the property.
 
 ---@enum PropertyInformation.Type
 local PropertyType = {
@@ -85,7 +83,7 @@ local PropertyType = {
 local CollectionType = {
     List = 1,
     Set = 2,
-    Dictionary = 4, 
+    Dictionary = 4,
 }
 
 return {

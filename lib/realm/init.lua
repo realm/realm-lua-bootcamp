@@ -6,11 +6,11 @@ local scheduler = require "realm.scheduler"
 local RealmObject = require "realm.object"
 local RealmResults = require "realm.results"
 
---@classmod realm
+---@classmod realm
 ---@class Realm
----@field _handle userdata
----@field _schema table<string, Realm.Schema.ClassInformation>
----@field _childHandles userdata[]
+---@field _handle userdata The realm userdata.
+---@field _schema table<string, Realm.Schema.ClassInformation> The schema used when opening the realm.
+---@field _childHandles userdata[] The userdata associated with the opened realm.
 local Realm = {}
 Realm.__index = Realm
 
@@ -22,9 +22,9 @@ function Realm:__close()
     self:close()
 end
 
----Checks whether class exists in schema, throws error if not. 
----@param className string
----@param realm Realm
+---Get the class information if it exists in schema, otherwise throw an error. 
+---@param className string The class name.
+---@param realm Realm The realm.
 ---@return Realm.Schema.ClassInformation
 local function _safeGetClass(realm, className)
     local classInfo = realm._schema[className]
@@ -32,11 +32,12 @@ local function _safeGetClass(realm, className)
         print(debug.traceback())
         error("Class ".. className .. " not found in schema");
     end
+
     return classInfo
 end
 
 ---@generic T
----@param writeCallback fun(): T
+---@param writeCallback fun(): T The callback performing the changes to apply to the realm.
 ---@return T
 function Realm:write(writeCallback)
     native.realm_begin_write(self._handle)
@@ -44,22 +45,22 @@ function Realm:write(writeCallback)
     if (status) then
         native.realm_commit_transaction(self._handle)
         return result
-    else
-        native.realm_cancel_transaction(self._handle)
-        error(result)
     end
+
+    native.realm_cancel_transaction(self._handle)
+    error(result)
 end
 
----@param className string
----@param values table?
----@param handle userdata?
+---@param className string The class name.
+---@param values table? The values to apply to the object.
+---@param handle userdata? The realm object userdata.
 ---@generic T : Realm.Object
 ---@return T
 function Realm:create(className, values, handle)
-    return RealmObject:new(self, _safeGetClass(self, className), values, handle)
+    return RealmObject._new(self, _safeGetClass(self, className), values, handle)
 end
 
----Explicitly close this realm, releasing its native resources
+---Explicitly close this realm and its associated userdata (release native resources).
 function Realm:close()
     for _, handle in ipairs(self._childHandles) do
         native.realm_release(handle)
@@ -67,25 +68,26 @@ function Realm:close()
     native.realm_release(self._handle)
 end
 
----@param object Realm.Object 
+---@param object Realm.Object The object.
 function Realm:delete(object)
     return native.realm_object_delete(object._handle)
 end
 
----@param object Realm.Object 
+---@param object Realm.Object The object.
 function Realm:isValid(object)
     return native.realm_object_is_valid(object._handle)
 end
 
----@param className string
+---@param className string The class name.
 ---@return Realm.Results
 function Realm:objects(className)
     local classInfo = _safeGetClass(self, className)
     local resultHandle = native.realm_object_get_all(self._handle, className)
-    return RealmResults:new(self, resultHandle, classInfo)
+
+    return RealmResults._new(self, resultHandle, classInfo)
 end
 
----@param config Realm.Config
+---@param config Realm.Config The configuration for opening the realm.
 ---@return Realm
 function Realm.open(config)
     local scheduler = config.scheduler and native.realm_clone(config.scheduler) or scheduler.defaultFactory()
@@ -94,8 +96,9 @@ function Realm.open(config)
     local self = setmetatable({
         _handle = _handle,
         _schema = _schema,
-        _childHandles = setmetatable({}, { __mode = "v"}) -- a table of weak references
+        _childHandles = setmetatable({}, { __mode = "v"}) -- A table of weak references.
     }, Realm)
+
     return self
 end
 

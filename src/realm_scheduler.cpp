@@ -85,7 +85,8 @@ static int create_scheduler(lua_State* L) {
     while (lua_next(L, -2)) {
         if (lua_type(L, -2) == LUA_TSTRING && ends_with(lua_tostringview(L, -2), "luv.so")) {
             void* lib = lua_touserdata(L, -1);
-            lua_pop(L, 1); // pop the key off the stack, we'll be returning early
+            // Pop the key off the stack, we'll be returning early.
+            lua_pop(L, 1);
 
             auto uv_async_send = reinterpret_cast<int(*)(uv_async_t*)>(find_function(lib, "uv_async_send"));
             if (!uv_async_send) {
@@ -102,7 +103,8 @@ static int create_scheduler(lua_State* L) {
             
             return 2;
         }
-        lua_pop(L, 1); // pop the last key off the stack
+        // Pop the last key off the stack.
+        lua_pop(L, 1);
     }
 
     return _inform_error(L, "Could not find the luv native module.");
@@ -111,6 +113,7 @@ static int create_scheduler(lua_State* L) {
 static int should_close(lua_State* L) {
     auto userdata = static_cast<Scheduler::Userdata*>(luaL_checkudata(L, 1, UserdataMeta));
     lua_pushboolean(L, userdata->close_requested);
+
     return 1;
 }
 
@@ -119,12 +122,14 @@ static int close(lua_State* L) {
     if (!userdata->closed) {
         userdata->~Userdata();
     }
+
     return 0;
 }
 
 static int do_work(lua_State* L) {
     auto userdata = static_cast<Scheduler::Userdata*>(luaL_checkudata(L, 1, UserdataMeta));
     userdata->queue.invoke_all();
+
     return 0;
 }
 
@@ -152,6 +157,7 @@ extern "C" int luaopen_realm_scheduler_libuv_native(lua_State* L) {
         {NULL, NULL}
     };
     luaL_newlib(L, funcs);
+
     return 1;
 }
 

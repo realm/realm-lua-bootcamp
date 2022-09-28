@@ -45,7 +45,7 @@ local coroutineOpenRealm = coroutine.create(function ()
         sync = {
             user = currentUser,
             -- Sync all the stores with partition key ("city") set to "Chicago".
-            -- the partition value is the raw Extended JSON string (Lua does not have a BSON package)
+            -- The partition value is the raw Extended JSON string (Lua does not have a BSON package).
             partitionValue = "\"Chicago\""
         }
     })

@@ -14,6 +14,7 @@ App.__index = App
 ---@return Realm.App.User?
 function App:currentUser()
     local userHandle = native.realm_app_get_current_user(self._handle)
+
     return RealmUser._new(userHandle)
 end
 
@@ -44,8 +45,8 @@ function module.new(config)
     local app = {
         _handle = native.realm_app_create(config.appId)
     }
-    app = setmetatable(app, App)
-    return app
+
+    return setmetatable(app, App)
 end
 
 module.credentials = require "realm.app.credentials"

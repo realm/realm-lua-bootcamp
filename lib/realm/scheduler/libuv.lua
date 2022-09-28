@@ -16,5 +16,6 @@ scheduler.defaultFactory = function()
     end)
 
     userdata, scheduler = native.create_scheduler(async)
+
     return scheduler
 end

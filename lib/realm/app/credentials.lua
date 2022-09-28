@@ -5,7 +5,7 @@ local native = require "realm.app.native"
 local credentials = {}
 
 ---Get a credentials object to use for authenticating an anonymous user.
----@param reuseCredentials boolean?
+---@param reuseCredentials boolean? Whether to reuse credentials.
 ---@return Realm.App.Credentials
 function credentials.anonymous(reuseCredentials)
     return native.realm_app_credentials_new_anonymous(reuseCredentials);

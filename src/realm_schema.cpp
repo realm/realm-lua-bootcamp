@@ -96,17 +96,17 @@ realm_schema_t* _parse_schema(lua_State* L) {
     for (size_t i = 1; i <= classes_len; i++) {
         lua_rawgeti(L, argument_index, i);
 
-        // Use name field to create initial class info
+        // Use name field to create initial class info.
         lua_getfield(L, -1, "name");
         realm_class_info_t& class_info = classes[i-1];
         class_info.name = lua_tostring(L, -1);
         lua_pop(L, 1);
 
-        // Check if primaryKey is specified for a class in the schema
+        // Check if primaryKey is specified for a class in the schema.
         class_info.primary_key = lua_getfield(L, -1, "primaryKey") ? lua_tostring(L, -1) : "";
         lua_pop(L, 1);
 
-        // Get properties and iterate through them
+        // Get properties and iterate through them.
         lua_getfield(L, -1, "properties");
         luaL_checktype(L, -1, LUA_TTABLE);
 
@@ -114,7 +114,7 @@ realm_schema_t* _parse_schema(lua_State* L) {
         // (Push nil since lua_next starts by popping.)
         std::vector<realm_property_info_t>& class_properties = properties_vector.emplace_back(std::vector<realm_property_info_t>());
         lua_pushnil(L);
-        while(lua_next(L, -2) != 0) {
+        while (lua_next(L, -2) != 0) {
             // Copy the key.
             lua_pushvalue(L, -2);
             // The copied key.
@@ -124,11 +124,11 @@ realm_schema_t* _parse_schema(lua_State* L) {
 
             realm_property_info_t& property_info = class_properties.emplace_back(realm_property_info_t{
                 .name = lua_tostring(L, -1),
-                // TODO?: add support for this
+                // TODO?: Add support for this.
                 .public_name = "",
                 .link_target = "",
                 .link_origin_property_name = "",
-                // Primary keys get implicitly indexed
+                // Primary keys get implicitly indexed.
                 .flags = strcmp(lua_tostring(L, -1), class_info.primary_key) == 0 
                     ? RLM_PROPERTY_PRIMARY_KEY
                     : RLM_PROPERTY_NORMAL
@@ -157,10 +157,10 @@ void _push_schema_info(lua_State* L, const realm_t* realm) {
 
     const char* class_name;
     const char* property_name;
-    for(realm::ObjectSchema class_info : schema) {
+    for (realm::ObjectSchema class_info : schema) {
         lua_newtable(L);
         
-        // Set fields
+        // Set fields.
         class_name = class_info.name.c_str();
         lua_pushstring(L, class_name);
         lua_setfield(L, -2, "name");
@@ -173,7 +173,7 @@ void _push_schema_info(lua_State* L, const realm_t* realm) {
             lua_setfield(L, -2, "primaryKey");
         }
 
-        // Create a property lookup table where [property_name] => property_info
+        // Create a property lookup table where [property_name] => property_info.
         lua_newtable(L);
         for(realm::Property property_info : class_info.persisted_properties) {
             lua_newtable(L);
@@ -202,7 +202,7 @@ void _push_schema_info(lua_State* L, const realm_t* realm) {
                     collection_type = RLM_COLLECTION_TYPE_SET;
                 else if (bool(property_info.type & realm::PropertyType::Dictionary))
                     collection_type = RLM_COLLECTION_TYPE_DICTIONARY;
-                
+
                 lua_pushinteger(L, collection_type);
                 lua_setfield(L, -2, "collectionType");
             }

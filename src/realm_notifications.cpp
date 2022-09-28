@@ -5,7 +5,7 @@
 #include "realm_util.hpp"
 #include "realm_notifications.hpp"
 
-// TODO: Use this for _lib_realm_object_add_listener
+// TODO: Use this for lib_realm_object_add_listener
 // struct realm_lua_userdata_object : realm_lua_userdata {
 //     const realm::ObjectSchema& schema;
 // };
@@ -15,7 +15,7 @@ static void populate_lua_object_changes_table(lua_State* L, int table_index, con
     lua_newtable(L);
     for (size_t index = 0; index < changes_properties_size; index++) {
         // Get the property key of the changed object (changes_properties[index])
-        // and push onto stack.
+        // and push onto the stack.
         lua_pushinteger(L, changes_properties[index]);
         // Add the above property key to the table/array at position "index + 1"
         // and pop it from the stack.
@@ -59,8 +59,6 @@ static void on_object_change(realm_lua_userdata* userdata, const realm_object_ch
         _inform_error(L, "Could not call the callback function:\n%1", lua_tostring(L, -1));
         return;
     }
-
-    return;
 }
 
 static void populate_lua_collection_changes_table(lua_State* L, int table_index, const char* field_name, size_t* changes_indices, size_t changes_indices_size) {
@@ -68,7 +66,7 @@ static void populate_lua_collection_changes_table(lua_State* L, int table_index,
     lua_newtable(L);
     for (size_t index = 0; index < changes_indices_size; index++) {
         // Get the index of the changed object (changes_indices[index])
-        // and convert to Lua's 1-based index (+1) and push onto stack.
+        // and convert to Lua's 1-based index (+1) and push onto the stack.
         lua_pushinteger(L, changes_indices[index] + 1);
         // Add the above index value to the table/array at position "index + 1"
         // and pop it from the stack.
@@ -133,11 +131,11 @@ static void on_collection_change(realm_lua_userdata* userdata, const realm_colle
     }
 }
 
-int _lib_realm_results_add_listener(lua_State* L) {
-    // Get 1st argument (results/collection) from stack
+int lib_realm_results_add_listener(lua_State* L) {
+    // Get 1st argument (results/collection) from stack.
     realm_results_t** results = (realm_results_t**)lua_touserdata(L, 1);
     
-    // Pop 2nd argument/top of stack (the Lua function) from the stack and save a
+    // Pop last argument/top of stack (the Lua function) from the stack and save a
     // reference to it in the register. "callback_reference" is the register location.
     int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
 
@@ -147,8 +145,9 @@ int _lib_realm_results_add_listener(lua_State* L) {
     userdata->L = L;
     userdata->callback_reference = callback_reference;
 
-    // Put the notification token on the stack.
+    // Get and push the notification token onto the stack and set its metatable.
     auto** notification_token = static_cast<realm_notification_token_t**>(lua_newuserdata(L, sizeof(realm_notification_token_t*)));
+    luaL_setmetatable(L, RealmHandle);
     *notification_token = realm_results_add_notification_callback(
         *results,
         userdata,
@@ -156,10 +155,6 @@ int _lib_realm_results_add_listener(lua_State* L) {
         nullptr,
         on_collection_change
     );
-
-    // Set the metatable of the notification token (top of stack) to that
-    // of RealmHandle in order for it to be released via __gc.
-    luaL_setmetatable(L, RealmHandle);
 
     if (!*notification_token) {
         lua_pop(L, 1);
@@ -169,11 +164,11 @@ int _lib_realm_results_add_listener(lua_State* L) {
     return 1;
 }
 
-int _lib_realm_object_add_listener(lua_State* L) {
+int lib_realm_object_add_listener(lua_State* L) {
     // Get 1st argument (object) from the stack.
     realm_object_t** object = (realm_object_t**)lua_touserdata(L, 1);
 
-    // Pop 2nd argument/top of stack (the Lua function) from the stack and save a
+    // Pop last argument/top of stack (the Lua function) from the stack and save a
     // reference to it in the register. "callback_reference" is the register location.
     int callback_reference = luaL_ref(L, LUA_REGISTRYINDEX);
 
@@ -184,8 +179,9 @@ int _lib_realm_object_add_listener(lua_State* L) {
     userdata->callback_reference = callback_reference;
     //userdata->schema = (*object)->get_object_schema();    // TODO: Fix
 
-    // Put the notification token on the stack.
+    // Push the notification token onto the stack and set its metatable.
     auto** notification_token = static_cast<realm_notification_token_t**>(lua_newuserdata(L, sizeof(realm_notification_token_t*)));
+    luaL_setmetatable(L, RealmHandle);
     *notification_token = realm_object_add_notification_callback(
         *object,
         userdata,
@@ -193,10 +189,6 @@ int _lib_realm_object_add_listener(lua_State* L) {
         nullptr,
         on_object_change
     );
-
-    // Set the metatable of the notification token (top of stack) to that
-    // of RealmHandle in order for it to be released via __gc.
-    luaL_setmetatable(L, RealmHandle);
 
     if (!*notification_token) {
         lua_pop(L, 1);

@@ -31,7 +31,8 @@ static int lib_realm_open(lua_State* L) {
         lua_getfield(L, -1, "partitionValue");
         if (lua_isstring(L, -1)) {
             partition_value = lua_tostring(L, -1);
-        } else {
+        }
+        else {
             return _inform_error(L, "sync.partitionValue must be a string, got %1.", lua_typename(L, lua_type(L, -1)));
         }
         lua_pop(L, 1);
@@ -58,11 +59,13 @@ static int lib_realm_open(lua_State* L) {
     lua_getfield(L, 1, "path");
     if (lua_isstring(L, -1)) {
         realm_config_set_path(config, lua_tostring(L, -1));
-    } else if (sync_config) {
+    }
+    else if (sync_config) {
         char* path = realm_app_sync_client_get_default_file_path_for_realm(sync_config, nullptr);
         realm_config_set_path(config, path);
         realm_free(path);
-    } else {
+    }
+    else {
         realm_config_set_path(config, "default.realm");
     }
     lua_pop(L, 1);
@@ -70,7 +73,8 @@ static int lib_realm_open(lua_State* L) {
     lua_getfield(L, 1, "schemaVersion");
     if (lua_isinteger(L, -1)) {
         realm_config_set_schema_version(config, lua_tonumber(L, -1));
-    } else {
+    }
+    else {
         realm_config_set_schema_version(config, 0);
     }
     lua_pop(L, 1);
@@ -83,7 +87,8 @@ static int lib_realm_open(lua_State* L) {
     
     if (sync_config) {
         realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_ADDITIVE_EXPLICIT);
-    } else {
+    }
+    else {
         // TODO?: Add ability to change this through config object? 
         realm_config_set_schema_mode(config, RLM_SCHEMA_MODE_SOFT_RESET_FILE); // Delete realm file if there are schema conflicts.
     }
@@ -380,9 +385,11 @@ static int lib_realm_list_insert(lua_State *L) {
     bool success;
     if (index == out_size) {
         success = realm_list_insert(*realm_list, index, *value);
-    } else if (index < out_size) {
+    }
+    else if (index < out_size) {
         success = realm_list_set(*realm_list, index, *value);
-    } else {
+    }
+    else {
         return _inform_error(L, "Index out of bounds when setting value in list");
     }
     if (!success) {

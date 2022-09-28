@@ -175,7 +175,7 @@ void _push_schema_info(lua_State* L, const realm_t* realm) {
 
         // Create a property lookup table where [property_name] => property_info.
         lua_newtable(L);
-        for(realm::Property property_info : class_info.persisted_properties) {
+        for (realm::Property property_info : class_info.persisted_properties) {
             lua_newtable(L);
             
             property_name = property_info.name.c_str();
@@ -196,12 +196,15 @@ void _push_schema_info(lua_State* L, const realm_t* realm) {
 
             if (bool(property_info.type & realm::PropertyType::Collection)) {
                 realm_collection_type_e collection_type;
-                if (bool(property_info.type & realm::PropertyType::Array))
+                if (bool(property_info.type & realm::PropertyType::Array)) {
                     collection_type = RLM_COLLECTION_TYPE_LIST;
-                else if (bool(property_info.type & realm::PropertyType::Set))
+                }
+                else if (bool(property_info.type & realm::PropertyType::Set)) {
                     collection_type = RLM_COLLECTION_TYPE_SET;
-                else if (bool(property_info.type & realm::PropertyType::Dictionary))
+                }
+                else if (bool(property_info.type & realm::PropertyType::Dictionary)) {
                     collection_type = RLM_COLLECTION_TYPE_DICTIONARY;
+                }
 
                 lua_pushinteger(L, collection_type);
                 lua_setfield(L, -2, "collectionType");

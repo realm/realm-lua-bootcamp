@@ -27,9 +27,11 @@ local app = App.new({ appId = APP_ID })
 local currentUser = app:currentUser()
 local realm --- @type Realm
 
-local coroutineOpenRealm = coroutine.create(function ()
-    assert(currentUser)
-    realm = Realm.open({
+---@param user Realm.App.User The realm user.
+---@return Realm
+local function openRealm(user)
+    assert(user)
+    return Realm.open({
         schema = {
             {
                 name = "StoreSync",
@@ -43,13 +45,13 @@ local coroutineOpenRealm = coroutine.create(function ()
             }
         },
         sync = {
-            user = currentUser,
+            user = user,
             -- Sync all the stores with partition key ("city") set to "Chicago".
             -- The partition value is the raw Extended JSON string (Lua does not have a BSON package).
             partitionValue = "\"Chicago\""
         }
     })
-end)
+end
 
 local function registerAndLogIn(email, password)
     -- When the registration is complete, the callback will be invoked.
@@ -60,7 +62,7 @@ local function registerAndLogIn(email, password)
             app:logIn(credentials, function (user, err)
                 if not err then
                     currentUser = user
-                    coroutine.resumeThrowable(coroutineOpenRealm)
+                    realm = openRealm(user)
                 else
                     error(err)
                 end
@@ -75,7 +77,7 @@ end
 -- whereafter we resume the coroutine and open the realm. Otherwise we register
 -- a new user and log in before opening the realm.
 if currentUser then
-    coroutine.resumeThrowable(coroutineOpenRealm)
+    realm = openRealm(currentUser)
 else
     registerAndLogIn("jane@example.com", "123456")
 end

@@ -12,6 +12,19 @@ Realm is a mobile database that runs directly on phones, tablets or wearables. T
 
 ## Getting Started
 
+Prerequitsites:
+* LuaRocks
+
+Install the Realm package by running the command
+```
+luarocks install realm
+```
+To then use Realm add the following line to your file:
+```
+require("realm")
+```
+
+
 ## Getting Help
 
 ## Building Realm

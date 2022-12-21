@@ -2,6 +2,10 @@
 
 Realm is a mobile database that runs directly on phones, tablets or wearables. This repository holds the source code for the Lua version of Realm. 
 
+# Disclaimer
+
+This project does not have any official support but is instead released as a community project.
+
 # Features
 
 * **Mobile-first:** Realm is the first database built from the ground up to run directly inside phones, tablets, and wearables.
@@ -12,13 +16,6 @@ Realm is a mobile database that runs directly on phones, tablets or wearables. T
 
 # Getting Started
 
-# Getting Help
-
-# Building Realm
-
-
-
-
 # Usage
 
 ## Defining a schema
@@ -26,62 +23,64 @@ Realm is a mobile database that runs directly on phones, tablets or wearables. T
 Start of by defining your schema.
 
 ```Lua
-      schema = {
-            {
-                name = "Person",
-                primaryKey = "_id",
-                properties = {
-                    _id = "int",
-                    name = "string"
-                    favoriteDog = "Dog?",
-                    dogs = "Dog[]"
-                }
-            },
-            {
-              name = "Dog",
-                primaryKey = "_id",
-                properties = {
-                    _id = "int",
-                    name = "string"
-                    age = "int"
-                }
-            }
+schema = {
+    {
+        name = "Person",
+        primaryKey = "_id",
+        properties = {
+            _id = "int",
+            name = "string"
+            age = "int"
+            favoriteDog = "Dog?",
+            dogs = "Dog[]"
         }
+    },
+    {
+        name = "Dog",
+        primaryKey = "_id",
+        properties = {
+            _id = "int",
+            name = "string"
+            age = "int"
+        }
+    }
+}
 ```
 
-for `properties` we currently support numbers, strings, booleans, links to other objects and lists of objects. Note that object links must be appended with "?" which means that they are nullable.
+for `properties` we currently support ints, doubles, strings, booleans, links to other objects and lists of objects. Note that object links must be appended with "?" which means that they are nullable.
 
 ## Open Database
 
 Once you have a schema you can open the database.
 
 ```Lua
-    local realm = Realm.open(schema)
+local realm = Realm.open(schema)
 ```
 
 ## Write
 
 Persist some data by instantiating the model object and copying it into the open Realm instance during a write transaction.
+
 ```Lua
+local dog = {
+    _id = math.random(1, 100000),
+    name = "Max",
+    age = 5
+}
 
-    local dog = {
-        _id = math.random(1, 100000),
-        name = "Max",
-        age = 5
-    }
-
-    local person = {
-        _id = math.random(1, 100000),
-        name = "John",
-        favoriteDog = dog
-    }
+local person = {
+    _id = math.random(1, 100000),
+    name = "John",
+    age = 42,
+    favoriteDog = dog
+}
     
-    local persistedDog 
-    local persistedPerson 
-    realm:write(function()
-        persistedDog = realm:create("Dog", dog)
-        persistedPerson = realm:create("Person", person)
-    end)
+local persistedDog 
+local persistedPerson 
+realm:write(function()
+    persistedDog = realm:create("Dog", dog)
+    persistedPerson = realm:create("Person", person)
+end)
 ```
 
 ## Read
@@ -89,19 +88,19 @@ Persist some data by instantiating the model object and copying it into the open
 Accessing properties of an object is done with dot-notation.
 
 ```Lua
-    print(dog.name) -- outputs 5
+print(dog.age) -- outputs 5
 ```
 
 
 ## Update
 
-Updating data is also performed within a write transaction.
+Updating data is also done within a write transaction.
 
 ```Lua
-    realm:write(function()
-        persistedDog.name = "6"
-        persistedPerson.name = "doe"
-    end)
+realm:write(function()
+    persistedDog.age = "6"
+    persistedPerson.name = "Doe"
+end)
 ```
 
 ## Delete
@@ -109,27 +108,112 @@ Updating data is also performed within a write transaction.
 Finally you can delete objects from the database within a transaction.
 
 ```Lua
-    realm:write(function()
-        realm:delete(persistedPerson)
-    end)
+realm:write(function()
+    realm:delete(persistedDog)
+end)
 ```
 
-## Lists
+## Collections & filter
 
-You can add elements to a list by using table method "insert"
+To fetch all objects from a collection you can use the `realm:objects()`method and provide the object name.
 
 ```Lua
-    local otherDog = {
-        _id = math.random(1, 100000),
-        name = "Milo",
-        age = 4
-    }
-    realm:write(function()
-        table.insert(persistedPerson.dogs, otherDog) 
-    end)
-    print(#persistedPerson.dogs) -- outputs 1
-    print(#persistedPerson[1].name) -- outputs Milo
+local allPeople = realm:objects("Person")
 ```
+
+You can then perform filters on that collection using the Realm Query Language (RQL).
+
+```Lua
+local filteredPeople = people:filter(
+    “name = $0 AND age = $1”,
+    “Doe”,
+    42
+)
+```
+
+You can also interact with a list by using a table's metamethods.
+
+```Lua
+local otherDog = {
+    _id = math.random(1, 100000),
+    name = "Milo",
+    age = 4
+}
+realm:write(function()
+    table.insert(persistedPerson.dogs, otherDog) 
+end)
+print(#persistedPerson.dogs) -- outputs 1
+print(persistedPerson[1].name) -- outputs Milo
+```
+
+## Notifications
+
+To subscribe on events on a collection you need to invoke its `addListener` method and provide a callback function.
+
+```Lua
+local persons = realm:objects(“Person”) 
+persons:addListener(function (collection, changes)
+    for _, index in ipairs(changes.deletions) do
+        print(“Deleted store.”)
+        print(“Index: ” .. index)
+    end
+
+    for _, index in ipairs(changes.insertions) do
+        print(“Added store.”)
+        print(“Id: ” .. collection[index]._id)
+    end
+
+    for _, index in ipairs(changes.modificationsNew) do
+        print(“Modified store.”)
+        print(“Id: ” .. collection[index]._id)
+    end
+end)
+```
+
+## Using a synced Realm
+Using a synced Realm requires you to initially register a user.
+
+```Lua
+local App = require “realm.app”
+local APP_ID = “MY_APP_ID”
+local currentUser
+local realm
+app:registerEmail(email, password, function(err)
+    local credentials = App
+        .credentials
+        .emailPassword(email, password)
+
+    app:logIn(credentials, function(user, err)
+        currentUser = user
+        realm = openRealm(user)
+    end)
+end)
+```
+
+Opening a Realm now requires an additional `sync` field in the schema.
+
+```Lua
+local function openRealm(user)
+    return Realm.open({
+        schema = {
+            {
+                name = “Store”,
+                primaryKey = “_id”,
+                properties = {
+                    _id = “int”,
+                    city = “string”
+                }
+            }
+        }
+        sync = {
+            user = user,
+            partitionValue = “\”Chicago\””
+        }
+    })
+end)
+```
+
+The only sync mode supported is [partition-based sync](https://www.mongodb.com/docs/atlas/app-services/reference/partition-based-sync/). For additional information on how to setup sync see [this](https://www.mongodb.com/docs/atlas/app-services/sync/get-started/).
 
 
 # Contributing

@@ -15,6 +15,7 @@ This project does not have any official support but is instead released as a com
 * **[Device Sync](https://www.mongodb.com/atlas/app-services/device-sync)**: Makes it simple to keep data in sync across users, devices, and your backend in real-time. [Get started](http://mongodb.com/realm/register?utm_medium=github_atlas_CTA&utm_source=realm_dotnet_github) for free with a template application that includes a cloud backend and Sync.
 
 # Getting Started
+Start off by cloning this project into your codebase. In this projects root fulder run `luarocks install realm-lua-dev-1.rockspec`. Once it's complete, run `eval $(luarocks path)` to apply the changes to your shell.
 
 # Usage
 
@@ -176,7 +177,7 @@ Using a synced Realm requires you to initially register a user.
 ```Lua
 local App = require “realm.app”
 local APP_ID = “MY_APP_ID”
-local currentUser
+local app = App.new({ appId = APP_ID })
 local realm
 app:registerEmail(email, password, function(err)
     local credentials = App
@@ -184,33 +185,32 @@ app:registerEmail(email, password, function(err)
         .emailPassword(email, password)
 
     app:logIn(credentials, function(user, err)
-        currentUser = user
         realm = openRealm(user)
     end)
 end)
+
+local currentUser = app:currentUser()
 ```
 
 Opening a Realm now requires an additional `sync` field in the schema.
 
 ```Lua
-local function openRealm(user)
-    return Realm.open({
-        schema = {
-            {
-                name = “Store”,
-                primaryKey = “_id”,
-                properties = {
-                    _id = “int”,
-                    city = “string”
-                }
+return Realm.open({
+    schema = {
+        {
+            name = “Store”,
+            primaryKey = “_id”,
+            properties = {
+                _id = “int”,
+                city = “string”
             }
         }
-        sync = {
-            user = user,
-            partitionValue = “\”Chicago\””
-        }
-    })
-end)
+    }
+    sync = {
+        user = currentUser,
+        partitionValue = “\”Chicago\””
+    }
+})
 ```
 
 The only sync mode supported is [partition-based sync](https://www.mongodb.com/docs/atlas/app-services/reference/partition-based-sync/). For additional information on how to setup sync see [this](https://www.mongodb.com/docs/atlas/app-services/sync/get-started/).

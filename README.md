@@ -55,6 +55,7 @@ for `properties` we currently support ints, doubles, strings, booleans, links to
 Once you have a schema you can open the database.
 
 ```Lua
+local Realm = require "realm"
 local realm = Realm.open(schema)
 ```
 

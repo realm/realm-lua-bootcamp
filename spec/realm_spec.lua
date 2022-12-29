@@ -71,6 +71,7 @@ local schema = {
             age = "int",
             pet = "Pet?",
             pets = "Pet[]",
+            ints = "int[]"
         }
     },
     {
@@ -218,13 +219,20 @@ describe("Realm Lua tests", function()
                 testPetB = realm:create("Pet", { name = "TurtleB"})
                 table.insert(testPerson.pets, testPetA)
                 table.insert(testPerson.pets, testPetB)
+                table.insert(testPerson.ints, 1)
+                table.insert(testPerson.ints, 2)
             end)
         end)
         teardown(function() _delete(realm, {testPetA, testPetB}) end)
-        it("successfully insert elements", function ()
+        it("successfully inserts objects", function()
             local petList = testPerson.pets
             assert.is.equal(#petList, 2)
             assert.is.equal(petList[1].name, "TurtleA")
+        end)
+        it("successfully inserts primitives", function()
+            local intList = testPerson.ints
+            assert.is.equal(#intList, 2)
+            assert.is.equal(intList[2], 2)
         end)
     end)
 end)

@@ -22,6 +22,19 @@ function RealmSet:new(realm, handle, classInfo)
     return setmetatable(set, RealmSet)
 end
 
-function RealmSet:__newindex(value)
-    native.realm_set_insert(self._handle, value._handle)
+function RealmSet:__index(value)
+    return native.realm_set_find(self._handle, value)
 end
+
+function RealmSet:__newindex(_, value)
+    if type(value) == "table" then
+        value = value._handle
+    end
+    native.realm_set_insert(self._handle, value)
+end
+
+function RealmSet:__len()
+    return native.realm_set_size(self._handle)
+end
+
+return RealmSet

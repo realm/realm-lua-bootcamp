@@ -465,16 +465,50 @@ static int lib_realm_set_insert(lua_State *L)
         return 0;
     }
     realm_set_t **realm_set = (realm_set_t **)lua_touserdata(L, 1);
-    size_t out_index;
-    bool out_inserted;
 
-    bool success = realm_set_insert(*realm_set, *value, &out_index, &out_inserted);
+    bool success = realm_set_insert(*realm_set, *value, NULL, NULL);
     if (!success)
     {
         return _inform_realm_error(L);
     }
 
     return 0;
+}
+
+static int lib_realm_set_size(lua_State *L)
+{
+    // Get arguments from the stack.
+    realm_set_t **realm_set = (realm_set_t **)lua_touserdata(L, 1);
+
+    // Get size of list and push onto the stack.
+    size_t out_size;
+    if (!realm_set_size(*realm_set, &out_size))
+    {
+        return _inform_realm_error(L);
+    }
+    lua_pushinteger(L, out_size);
+
+    return 1;
+}
+
+static int lib_realm_set_find(lua_State *L)
+{
+    // Get arguments from the stack.
+    realm_set_t **realm_set = (realm_set_t **)lua_touserdata(L, 1);
+    std::optional<realm_value_t> value = lua_to_realm_value(L, 2);
+    if (!value)
+    {
+        _inform_error(L, "No corresponding realm value found");
+        return 0;
+    }
+    bool out_found;
+    if (!realm_set_find(*realm_set, *value, NULL, &out_found))
+    {
+        return _inform_realm_error(L);
+    }
+    lua_pushboolean(L, out_found);
+
+    return 1;
 }
 
 static const luaL_Reg lib[] = {
@@ -500,6 +534,8 @@ static const luaL_Reg lib[] = {
     {"realm_list_size", lib_realm_list_size},
     {"realm_get_list", lib_realm_get_list},
     {"realm_get_set", lib_realm_get_set},
+    {"realm_set_size", lib_realm_set_size},
+    {"realm_set_find", lib_realm_set_find},
     {"realm_set_insert", lib_realm_set_insert},
     {NULL, NULL}};
 

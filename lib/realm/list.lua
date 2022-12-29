@@ -26,18 +26,16 @@ function RealmList:__index(key)
     local value = native.realm_list_get(self._handle, self._realm._handle, key - 1)
     if type(value) == "userdata" then
         return RealmObject._new(self._realm, self.class, {}, value)
-    else
-        return value
     end
+    return value
 end
 
 function RealmList:__newindex(index, value)
-    -- A realm objects type in lua will correspond to a "table"
+    -- A realm object type in Lua will correspond to a "table"
     if type(value) == "table" then
-        native.realm_list_insert(self._handle, index - 1, value._handle)
-    else
-        native.realm_list_insert(self._handle, index - 1, value)
+        value = value._handle
     end
+    native.realm_list_insert(self._handle, index - 1, value)
 end
 
 function RealmList:__len()

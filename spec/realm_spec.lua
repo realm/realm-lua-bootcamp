@@ -71,6 +71,8 @@ local schema = {
             age = "int",
             pet = "Pet?",
             pets = "Pet[]",
+            petSet = "Pet<>",
+            stringSet = "string<>",
         }
     },
     {
@@ -225,6 +227,55 @@ describe("Realm Lua tests", function()
             local petList = testPerson.pets
             assert.is.equal(#petList, 2)
             assert.is.equal(petList[1].name, "TurtleA")
+        end)
+    end)
+    describe("with sets", function()
+        local testPetA
+        local testPetB
+        local testPetC
+        realm:write(function()
+            testPetA = realm:create("Pet", { name = "TurtleA" })
+            testPetB = realm:create("Pet", { name = "TurtleB" })
+            testPetC = realm:create("Pet", { name = "TurtleC" })
+        end)
+        setup(function()
+            realm:write(function()
+                table.insert(testPerson.petSet, testPetA)
+                table.insert(testPerson.petSet, testPetB)
+                table.insert(testPerson.stringSet, "foo")
+                table.insert(testPerson.stringSet, "bar")
+            end)
+        end)
+        teardown(function() _delete(realm, { testPetA, testPetB }) end)
+        it("insert object elements", function()
+            local petSet = testPerson.petSet
+            assert.is.equal(#petSet, 2)
+        end)
+        it("returns true on object lookup", function()
+            local petSet = testPerson.petSet
+            assert.True(petSet[testPetA])
+            assert.True(petSet[testPetB])
+            assert.False(petSet[testPetC])
+        end)
+        it("returns true on string lookup", function()
+            local stringSet = testPerson.stringSet
+            assert.True(stringSet["foo"])
+            assert.True(stringSet["bar"])
+            assert.False(stringSet["nonExistingValue"])
+        end)
+        it("insert same object entry again does not increase size", function()
+            local petSet = testPerson.petSet
+            realm:write(function()
+                table.insert(petSet, testPetA)
+            end)
+            assert.is.equal(#petSet, 2)
+        end)
+        it("insert same string entry again does not increase size", function()
+            local stringSet = testPerson.stringSet
+            realm:write(function()
+                table.insert(stringSet, "foo")
+            end)
+            assert.is.equal(#stringSet, 2)
         end)
     end)
 end)

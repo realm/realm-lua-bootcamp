@@ -23,6 +23,9 @@ function RealmSet:new(realm, handle, classInfo)
 end
 
 function RealmSet:__index(value)
+    if type(value) == "table" then
+        value = value._handle
+    end
     return native.realm_set_find(self._handle, value)
 end
 

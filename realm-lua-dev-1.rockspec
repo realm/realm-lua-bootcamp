@@ -34,6 +34,7 @@ build = {
          ["realm.app.user"] = "lib/realm/app/user.lua",
          ["realm.app.credentials"] = "lib/realm/app/credentials.lua",
          ["realm.list"] = "lib/realm/list.lua",
+         ["realm.set"] = "lib/realm/set.lua",
          ["realm.object"] = "lib/realm/object.lua",
          ["realm.results"] = "lib/realm/results.lua",
          ["realm.classes"] = "lib/realm/classes.lua",

@@ -442,30 +442,66 @@ static int lib_realm_get_list(lua_State *L) {
     return 1;
 }
 
+static int lib_realm_get_set(lua_State *L)
+{
+    // Get arguments from the stack.
+    realm_object_t **realm_object = (realm_object_t **)lua_touserdata(L, 1);
+    realm_property_key_t &property_key = *(static_cast<realm_property_key_t *>(lua_touserdata(L, 2)));
+
+    // Get and push the set onto the stack and set its metatable.
+    realm_set_t **realm_set = static_cast<realm_set_t **>(lua_newuserdata(L, sizeof(realm_list_t *)));
+    luaL_setmetatable(L, RealmHandle);
+    *realm_set = realm_get_set(*realm_object, property_key);
+
+    return 1;
+}
+
+static int lib_realm_set_insert(lua_State *L)
+{
+    std::optional<realm_value_t> value = lua_to_realm_value(L, 2);
+    if (!value)
+    {
+        _inform_error(L, "No corresponding realm value found");
+        return 0;
+    }
+    realm_set_t **realm_set = (realm_set_t **)lua_touserdata(L, 1);
+    size_t out_index;
+    bool out_inserted;
+
+    bool success = realm_set_insert(*realm_set, *value, &out_index, &out_inserted);
+    if (!success)
+    {
+        return _inform_realm_error(L);
+    }
+
+    return 0;
+}
+
 static const luaL_Reg lib[] = {
-  {"realm_open",                                lib_realm_open},
-  {"realm_release",                             lib_realm_release},
-  {"realm_begin_write",                         lib_realm_begin_write},
-  {"realm_commit_transaction",                  lib_realm_commit_transaction},
-  {"realm_cancel_transaction",                  lib_realm_cancel_transaction},
-  {"realm_object_create",                       lib_realm_object_create},
-  {"realm_object_create_with_primary_key",      lib_realm_object_create_with_primary_key},
-  {"realm_object_delete",                       lib_realm_object_delete},
-  {"realm_set_value",                           lib_realm_set_value},
-  {"realm_get_value",                           lib_realm_get_value},
-  {"realm_object_is_valid",                     lib_realm_object_is_valid},
-  {"realm_object_get_all",                      lib_realm_object_get_all},
-  {"realm_object_add_listener",                 lib_realm_object_add_listener},
-  {"realm_results_get",                         lib_realm_results_get},
-  {"realm_results_count",                       lib_realm_results_count},
-  {"realm_results_add_listener",                lib_realm_results_add_listener},
-  {"realm_results_filter",                      lib_realm_results_filter},
-  {"realm_list_insert",                         lib_realm_list_insert},
-  {"realm_list_get",                            lib_realm_list_get},
-  {"realm_list_size",                           lib_realm_list_size},
-  {"realm_get_list",                            lib_realm_get_list},
-  {NULL, NULL}
-};
+    {"realm_open", lib_realm_open},
+    {"realm_release", lib_realm_release},
+    {"realm_begin_write", lib_realm_begin_write},
+    {"realm_commit_transaction", lib_realm_commit_transaction},
+    {"realm_cancel_transaction", lib_realm_cancel_transaction},
+    {"realm_object_create", lib_realm_object_create},
+    {"realm_object_create_with_primary_key", lib_realm_object_create_with_primary_key},
+    {"realm_object_delete", lib_realm_object_delete},
+    {"realm_set_value", lib_realm_set_value},
+    {"realm_get_value", lib_realm_get_value},
+    {"realm_object_is_valid", lib_realm_object_is_valid},
+    {"realm_object_get_all", lib_realm_object_get_all},
+    {"realm_object_add_listener", lib_realm_object_add_listener},
+    {"realm_results_get", lib_realm_results_get},
+    {"realm_results_count", lib_realm_results_count},
+    {"realm_results_add_listener", lib_realm_results_add_listener},
+    {"realm_results_filter", lib_realm_results_filter},
+    {"realm_list_insert", lib_realm_list_insert},
+    {"realm_list_get", lib_realm_list_get},
+    {"realm_list_size", lib_realm_list_size},
+    {"realm_get_list", lib_realm_get_list},
+    {"realm_get_set", lib_realm_get_set},
+    {"realm_set_insert", lib_realm_set_insert},
+    {NULL, NULL}};
 
 extern "C" int luaopen_realm_native(lua_State* L) {
     const luaL_Reg realm_handle_funcs[] = {

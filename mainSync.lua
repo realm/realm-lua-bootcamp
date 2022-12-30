@@ -1,17 +1,18 @@
 ---@diagnostic disable: undefined-field
 
 --------------------------------------------------------------------------------
--- EXAMPLE USAGE OF REALM LUA USING A LOCAL (NON-SYNC) REALM
+-- EXAMPLE USAGE OF REALM LUA USING ATLAS DEVICE SYNC
 --------------------------------------------------------------------------------
 
 --------------------------------------------------------------------------------
--- Import Realm
+-- Import Realm and App
 --------------------------------------------------------------------------------
 
 local uv = require "luv"
 
 local Realm = require "realm"
 require "realm.scheduler.libuv"
+local App = require "realm.app"
 
 local signal = uv.new_signal()
 signal:start("sigint", function()
@@ -19,6 +20,13 @@ signal:start("sigint", function()
   uv.stop()
 end)
 signal:unref()
+
+--------------------------------------------------------------------------------
+-- Initialize Your App Using the App ID Copied From the Atlas App Services UI
+--------------------------------------------------------------------------------
+
+local APP_ID = "application-0-oltdi"       -- <--- TODO: INSERT YOUR APP ID <---
+local app = App.new({ appId = APP_ID })
 
 --------------------------------------------------------------------------------
 -- Define Your Object Model
@@ -29,6 +37,8 @@ local TeamSchema = {
     primaryKey = "_id",
     properties = {
         _id = "int",
+        -- The `_partition` field will store the team name:
+        _partition = "string",
         teamName = "string",
         tasks = "Task[]"
     }
@@ -39,19 +49,78 @@ local TaskSchema = {
     primaryKey = "_id",
     properties = {
         _id = "int",
+        -- The `_partition` field will store the team name:
+        _partition = "string",
         description = "string",
         completed = "bool",
-        size = "string?"
+        size = "string?",
+        assigneeId = "string?"
     }
 }
 
 -----------------------------------------------------------------------------
--- Open a Local (Non-Sync) Realm
+-- Authenticate a User and Open a Synced Realm
 -----------------------------------------------------------------------------
 
-local realm = Realm.open({
-    schema = { TeamSchema, TaskSchema }
-})
+local realm --- @type Realm
+local currentUser --- @type Realm.App.User | nil
+local partitionValue = "Lua Sync"
+
+---@param user Realm.App.User The realm user.
+---@return Realm
+local function openRealm(user)
+    assert(user)
+    return Realm.open({
+        schema = { TeamSchema, TaskSchema },
+        sync = {
+            user = user,
+            -- To sync all objects belonging to a team called "Lua Sync" 
+            -- (i.e. all objects with the "_partition" field set to "Lua
+            -- Sync"), we add it as the partition value. (We will soon
+            -- create a team with this name.) The value must be the raw
+            -- Extended JSON string in order to be compatible with documents
+            -- stored in MongoDB Atlas. (Manually add `"` around the string.)
+            partitionValue = "\"" .. partitionValue .. "\""
+        }
+    })
+end
+
+local function registerAndLogIn(email, password)
+    app:registerEmail(email, password, function (err)
+        -- Called when registration is completed..
+
+        if not err or err == "name already in use" then
+            local credentials = App.credentials.emailPassword(email, password)
+            app:logIn(credentials, function (user, err)
+                -- Called when login is completed..
+
+                if not err then
+                    currentUser = user
+                    realm = openRealm(user)
+                else
+                    error(err)
+                end
+            end)
+        else
+            error(err)
+        end
+    end)
+end
+
+-- The current App User can also be retrieved once logged in using:
+-- local currentUser = app:currentUser()
+
+local exampleEmail = "jane@example.com"
+local examplePassword = "123456"
+
+-- If there is a current user, it must have been authenticated and
+-- is logged in, whereafter we open the realm. Otherwise we first
+-- register a new user, log in, then open the realm.
+if currentUser then
+    realm = openRealm(currentUser)
+else
+    registerAndLogIn(exampleEmail, examplePassword)
+end
 
 -----------------------------------------------------------------------------
 -- Create Realm Objects
@@ -64,23 +133,27 @@ local size = {
 }
 local smallTask = {
     _id = math.random(1, 100000),
+    _partition = partitionValue,
     description = "Get started with Realm Lua",
     completed = false,
     size = size.SMALL,
+    assigneeId = currentUser.identity
 }
 local mediumTask = {
     _id = math.random(1, 100000),
+    _partition = partitionValue,
     description = "Build an app using Atlas Device Sync",
     completed = false,
     size = size.MEDIUM
 }
-local luaTeam = {
+local luaSyncTeam = {
     _id = math.random(1, 100000),
-    teamName = "Lua",
+    _partition = partitionValue,
+    teamName = "Lua Sync",
 }
 
 -- Before the write transaction, `smallTask`, `mediumTask`
--- and `luaTeam` are only regular Lua objects.
+-- and `luaSyncTeam` are only regular Lua objects.
 
 realm:write(function ()
     -- `realm:create()` returns the created Realm
@@ -88,14 +161,14 @@ realm:write(function ()
 
     smallTask = realm:create("Task", smallTask)
     mediumTask = realm:create("Task", mediumTask)
-    luaTeam = realm:create("Team", luaTeam)
-    table.insert(luaTeam.tasks, smallTask)
-    table.insert(luaTeam.tasks, mediumTask)
+    luaSyncTeam = realm:create("Team", luaSyncTeam)
+    table.insert(luaSyncTeam.tasks, smallTask)
+    table.insert(luaSyncTeam.tasks, mediumTask)
 
     assert(smallTask and smallTask.description == "Get started with Realm Lua")
     assert(mediumTask and mediumTask.description == "Build an app using Atlas Device Sync")
-    assert(luaTeam and luaTeam.teamName == "Lua")
-    assert(#luaTeam.tasks == 2)
+    assert(luaSyncTeam and luaSyncTeam.teamName == "Lua Sync")
+    assert(#luaSyncTeam.tasks == 2)
 end)
 
 -- After the write transaction, the same local
@@ -126,6 +199,7 @@ print(uncompletedSmallTasks[1].description)
 
 local largeTask = {
     _id = math.random(1, 100000),
+    _partition = partitionValue,
     description = "Build a great IoT app",
     completed = false,
     size = size.LARGE
@@ -137,7 +211,7 @@ realm:write(function ()
 
     -- Modify `largeTask`
     largeTask = realm:create("Task", largeTask)
-    table.insert(luaTeam.tasks, largeTask)
+    table.insert(luaSyncTeam.tasks, largeTask)
 end)
 
 print("Number of uncompleted small tasks: " .. #uncompletedSmallTasks)
@@ -198,7 +272,8 @@ print("\n-------- TRIGGER CHANGE NOTIFICATIONS --------\n")
 
 local insertedTask = {
     _id = math.random(1, 100000),
-    description = "Insert data and watch it notify you",
+    _partition = partitionValue,
+    description = "Insert data and watch it sync across all devices",
     completed = false,
     size = size.SMALL
 }
@@ -210,7 +285,7 @@ end)
 
 -- (2) Trigger modification notification:
 realm:write(function ()
-    insertedTask.description = "Modify data and watch it notify you"
+    insertedTask.description = "Modify data and watch it sync across all devices"
 end)
 
 -- (3) Trigger deletion notification:
@@ -227,7 +302,7 @@ end)
 
 -- (1) Trigger modification notification:
 realm:write(function ()
-    smallTask.description = "Modify the small task"
+    smallTask.assigneeId = currentUser.identity
 end)
 
 -- (2) Trigger deletion notification:
@@ -238,6 +313,13 @@ end)
 -- NOTE:
 -- * If the object we added the listener to is also in the collection
 --   that we added a listener to, both listeners will be called.
+
+
+-- TIP:
+-- * While this Lua app is running and you're connected, go to MongoDB Atlas
+--   and modify or delete a document directly from the UI. If the document has
+--   the same partition value as the one specified when opening the realm, you
+--   should see the printouts in the terminal where you're running this code.
 
 
 print("Press Ctrl+C to exit")

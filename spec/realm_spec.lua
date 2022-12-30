@@ -234,5 +234,17 @@ describe("Realm Lua tests", function()
             assert.is.equal(#intList, 2)
             assert.is.equal(intList[2], 2)
         end)
+        it("removes objects", function()
+            local petList = testPerson.pets
+            assert.is.equal(#petList, 2)
+            petList[1] = nil
+            assert.is.equal(#petList, 1)
+        end)
+        it("removes primitives", function()
+            local intList = testPerson.ints
+            assert.is.equal(#intList, 2)
+            intList[1] = nil
+            assert.is.equal(#intList, 1)
+        end)
     end)
 end)

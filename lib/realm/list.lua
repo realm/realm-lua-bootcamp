@@ -31,6 +31,11 @@ function RealmList:__index(key)
 end
 
 function RealmList:__newindex(index, value)
+    -- assigning a value to nil means a deletion
+    if value == nil then
+        native.realm_list_erase(self._handle, index - 1)
+        return
+    end
     -- A realm object type in Lua will correspond to a "table"
     if type(value) == "table" then
         value = value._handle

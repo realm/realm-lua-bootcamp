@@ -22,6 +22,7 @@ function RealmList:new(realm, handle, classInfo)
     return setmetatable(list, RealmList)
 end
 
+--- @param key int The index to fetch the value from.
 function RealmList:__index(key)
     local value = native.realm_list_get(self._handle, self._realm._handle, key - 1)
     if type(value) == "userdata" then
@@ -30,6 +31,8 @@ function RealmList:__index(key)
     return value
 end
 
+--- @param key int The index to fetch or delete the value from.
+--- @param value any The Value to insert, if nil this operation becomes a deletion.
 function RealmList:__newindex(index, value)
     -- assigning a value to nil means a deletion
     if value == nil then

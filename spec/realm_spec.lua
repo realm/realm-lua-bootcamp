@@ -240,10 +240,10 @@ describe("Realm Lua tests", function()
                 testPetB = realm:create("Pet", { name = "TurtleB" })
                 testPetC = realm:create("Pet", { name = "TurtleC" })
                 testPerson = realm:create("Person", { name = "Peter", age = 3 })
-                table.insert(testPerson.petSet, testPetA)
-                table.insert(testPerson.petSet, testPetB)
-                table.insert(testPerson.stringSet, "foo")
-                table.insert(testPerson.stringSet, "bar")
+                testPerson.petSet[testPetA] = true
+                testPerson.petSet[testPetB] = true
+                testPerson.stringSet["foo"] = true
+                testPerson.stringSet["bar"] = true
             end)
         end)
         teardown(function() _delete(realm, { testPetA, testPetB, testPetC }) end)
@@ -270,21 +270,21 @@ describe("Realm Lua tests", function()
         it("insert same object entry again does not increase size", function()
             local petSet = testPerson.petSet
             realm:write(function()
-                table.insert(petSet, testPetA)
+                testPerson.petSet[testPetA] = true
             end)
             assert.is.equal(#petSet, 2)
         end)
         it("insert same string entry again does not increase size", function()
             local stringSet = testPerson.stringSet
             realm:write(function()
-                table.insert(stringSet, "foo")
+                testPerson.stringSet["foo"] = true
             end)
             assert.is.equal(#stringSet, 2)
         end)
         it("remove element", function()
             local petSet = testPerson.petSet
             realm:write(function()
-                petSet.remove(testPetA)
+                petSet[testPetA] = nil
             end)
             assert.is.equal(#petSet, 1)
         end)

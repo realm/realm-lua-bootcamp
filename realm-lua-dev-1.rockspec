@@ -36,6 +36,7 @@ build = {
          ["realm.list"] = "lib/realm/list.lua",
          ["realm.object"] = "lib/realm/object.lua",
          ["realm.results"] = "lib/realm/results.lua",
+         ["realm.dictionary"] = "lib/realm/dictionary.lua",
          ["realm.classes"] = "lib/realm/classes.lua",
          ["realm.scheduler"] = "lib/realm/scheduler/init.lua",
          ["realm.scheduler.libuv"] = "lib/realm/scheduler/libuv.lua"

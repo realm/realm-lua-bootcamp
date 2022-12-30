@@ -452,7 +452,11 @@ static int lib_realm_get_set(lua_State *L)
     realm_set_t **realm_set = static_cast<realm_set_t **>(lua_newuserdata(L, sizeof(realm_list_t *)));
     luaL_setmetatable(L, RealmHandle);
     *realm_set = realm_get_set(*realm_object, property_key);
-
+    if (!*realm_set)
+    {
+        _inform_realm_error(L);
+        return 0;
+    }
     return 1;
 }
 
@@ -466,8 +470,7 @@ static int lib_realm_set_insert(lua_State *L)
     }
     realm_set_t **realm_set = (realm_set_t **)lua_touserdata(L, 1);
 
-    bool success = realm_set_insert(*realm_set, *value, NULL, NULL);
-    if (!success)
+    if (!realm_set_insert(*realm_set, *value, NULL, NULL))
     {
         return _inform_realm_error(L);
     }
@@ -499,7 +502,10 @@ static int lib_realm_set_erase(lua_State *L)
 
     // Get size of list and push onto the stack.
     bool out_erased;
-    realm_set_erase(*realm_set, *value, &out_erased);
+    if (!realm_set_erase(*realm_set, *value, &out_erased))
+    {
+        return _inform_realm_error(L);
+    }
     lua_pushboolean(L, out_erased);
     return 1;
 }

@@ -2,7 +2,6 @@ local native = require "realm.native"
 
 ---@class RealmSet
 ---@field class Realm.Schema.ClassInformation The class information.
----@field remove function removes the object from the set.
 ---@field _handle userdata The realm set userdata.
 ---@field _realm Realm The realm.
 local RealmSet = {}

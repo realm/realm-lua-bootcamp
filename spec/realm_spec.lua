@@ -285,6 +285,7 @@ describe("Realm Lua tests", function()
         end)
         it("remove element", function()
             local petSet = testPerson.petSet
+            assert.is.equal(#petSet, 2)
             realm:write(function()
                 petSet[testPetA] = nil
             end)

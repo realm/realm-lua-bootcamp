@@ -269,6 +269,7 @@ describe("Realm Lua tests", function()
         end)
         it("insert same object entry again does not increase size", function()
             local petSet = testPerson.petSet
+            assert.is.equal(#petSet, 2)
             realm:write(function()
                 testPerson.petSet[testPetA] = true
             end)
@@ -276,6 +277,7 @@ describe("Realm Lua tests", function()
         end)
         it("insert same string entry again does not increase size", function()
             local stringSet = testPerson.stringSet
+            assert.is.equal(#stringSet, 2)
             realm:write(function()
                 testPerson.stringSet["foo"] = true
             end)

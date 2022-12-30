@@ -29,7 +29,7 @@ function RealmSet:__index(value)
     return native.realm_set_find(self._handle, value)
 end
 
---- @param value true | nil True implies that the entry should be inserted to the set. Nil means deletion.
+--- @param value true | nil True implies that the entry should be inserted in the set. Nil means deletion.
 function RealmSet:__newindex(entry, value)
     if value == nil then
         native.realm_set_erase(self._handle, entry)

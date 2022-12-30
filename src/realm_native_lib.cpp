@@ -463,11 +463,6 @@ static int lib_realm_get_set(lua_State *L)
 static int lib_realm_set_insert(lua_State *L)
 {
     std::optional<realm_value_t> value = lua_to_realm_value(L, 2);
-    if (!value)
-    {
-        _inform_error(L, "No corresponding realm value found");
-        return 0;
-    }
     realm_set_t **realm_set = (realm_set_t **)lua_touserdata(L, 1);
 
     if (!realm_set_insert(*realm_set, *value, NULL, NULL))
@@ -515,11 +510,6 @@ static int lib_realm_set_find(lua_State *L)
     // Get arguments from the stack.
     realm_set_t **realm_set = (realm_set_t **)lua_touserdata(L, 1);
     std::optional<realm_value_t> value = lua_to_realm_value(L, 2);
-    if (!value)
-    {
-        _inform_error(L, "No corresponding realm value found");
-        return 0;
-    }
     bool out_found;
     if (!realm_set_find(*realm_set, *value, NULL, &out_found))
     {

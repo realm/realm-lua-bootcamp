@@ -1,5 +1,4 @@
 local native = require "realm.native"
-local RealmObject = require "realm.object"
 
 ---@class RealmSet
 ---@field class Realm.Schema.ClassInformation The class information.
@@ -9,8 +8,8 @@ local RealmObject = require "realm.object"
 local RealmSet = {}
 
 ---@param self Realm.Set The realm set.
----@param value the value to remove.
----@return Realm.Results
+---@param value any the value to remove.
+---@return boolean
 local function remove(self, value)
     return native.realm_set_erase(self._handle, value)
 end
@@ -29,6 +28,7 @@ function RealmSet:new(realm, handle, classInfo)
     return setmetatable(set, RealmSet)
 end
 
+--- @param value any The value to lookup in the set.
 function RealmSet:__index(value)
     if type(value) == "table" then
         value = value._handle
@@ -36,6 +36,7 @@ function RealmSet:__index(value)
     return native.realm_set_find(self._handle, value)
 end
 
+--- @param value any The value to insert into the set.
 function RealmSet:__newindex(_, value)
     if type(value) == "table" then
         value = value._handle

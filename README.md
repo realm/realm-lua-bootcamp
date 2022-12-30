@@ -10,7 +10,6 @@ This SDK does not have any official support but is instead released as a communi
 
 * **Mobile-first:** Realm is the first database built from the ground up to run directly inside phones, tablets, and wearables.
 * **Simple:** Data is directly exposed as objects and queryable by code, removing the need for ORM's riddled with performance & maintenance issues.
-* **Modern:** Realm supports relationships.
 * **Fast:** Realm is faster than even raw SQLite on common operations while maintaining an extremely rich feature set.
 * **Offline-first:** Realm's local database persists data on-disk, so apps work as well offline as they do online.
 * **[Device Sync](https://www.mongodb.com/atlas/app-services/device-sync)**: Makes it simple to keep data in sync across users, devices, and your backend in real-time. (This SDK only supports [partition-based sync](https://www.mongodb.com/docs/atlas/app-services/reference/partition-based-sync/).)
@@ -23,8 +22,9 @@ Follow these steps to get started with the Realm Lua SDK.
 
 ## Prerequisites
 
-* Install LuaRocks for [Unix](https://github.com/luarocks/luarocks/wiki/Installation-instructions-for-Unix) or [Windows](https://github.com/luarocks/luarocks/wiki/Installation-instructions-for-Windows).
-* We recommend [Visual Studio Code](https://code.visualstudio.com/Download) as your IDE using the settings located in [.vscode](.vscode).
+* The package manager [LuaRocks](https://github.com/luarocks/luarocks/wiki/Download)
+* We recommend [Visual Studio Code](https://code.visualstudio.com/Download) as your IDE using the configurations and extensions specified in [.vscode](.vscode)
+* CMake 3.20 or newer (this is included in our recommended VSCode extension [C/C++ Extension Pack](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools-extension-pack)). If not using the extension, it can be downloaded for [macOS](https://formulae.brew.sh/formula/cmake#default), [Windows](https://cmake.org/download/), or [Linux](https://cmake.org/download/)
 
 ## Installation
 
@@ -38,6 +38,7 @@ cd realm-lua-bootcamp
 Install dependencies and packages:
 
 ```sh
+git submodule update --init --recursive
 luarocks install realm-lua-dev-1.rockspec
 ```
 
@@ -108,6 +109,7 @@ The `properties` field specifies all the required and optional properties belong
     * `"<>"` (set)
         * A Lua `table` used as a set.
     * When using a collection type, its element type must always be specified (e.g. `"int[]"`).
+    * > ℹ️ Realm collections in Lua uses the Lua 1-based indexing standard.
 * The name of a Realm object type.
     * This refers to the string specified in the `name` field of an object schema.
 * Nullable type
@@ -164,8 +166,7 @@ local mediumTask = {
 }
 local luaTeam = {
     _id = math.random(1, 100000),
-    teamName = "Lua",
-    tasks = { smallTask, mediumTask }
+    teamName = "Lua"
 }
 
 -- Before the write transaction, `smallTask`, `mediumTask`,
@@ -178,6 +179,8 @@ realm:write(function ()
     smallTask = realm:create("Task", smallTask)
     mediumTask = realm:create("Task", mediumTask)
     luaTeam = realm:create("Team", luaTeam)
+    table.insert(luaSyncTeam.tasks, smallTask)
+    table.insert(luaSyncTeam.tasks, mediumTask)
 end)
 
 -- After the write transaction, the same local
@@ -190,10 +193,6 @@ Querying all objects of a particular type in a realm can be done by passing the 
 
 ```Lua
 local tasks = realm:objects("Task");
-
-for index, task in ipairs(tasks) do
-    print(task.description)
-end
 ```
 
 Once the objects have been queried, they can be filtered using [Realm Query Language](https://www.mongodb.com/docs/realm/realm-query-language/). The following example filters all tasks where `completed` is `false` and `size` is `"SMALL"`:
@@ -217,7 +216,7 @@ print(uncompletedSmallTasks[1].description) -- "Get started with Realm Lua"
 >
 > Realm utilizes *lazy loading* for efficiency. This means that calls to `realm:objects()` and `realm:objects():filter()` are not actually executed at that time. Instead, it is executed once an object is accessed, for instance when iterating over the collection or accessing the length or an object of the filtered result.
 
-## Update a Realm Object
+## Update Realm Objects
 
 As with creating an object, any changes to a Realm object must occur within a write transaction. To modify an object, you simply update its properties:
 
@@ -229,7 +228,7 @@ end)
 print("Number of uncompleted small tasks: " .. #uncompletedSmallTasks) -- 0
 ```
 
-Lists can be modified via the table's metamethods. The example below creates another `Task` and adds it to the team's list of tasks.
+Collections can be modified via the table's metamethods. The example below creates another `Task` and adds it to the team's list of tasks.
 
 ```Lua
 local largeTask = {
@@ -240,18 +239,23 @@ local largeTask = {
 }
 
 realm:write(function ()
-    realm:create("Task", largeTask)
+    largeTask = realm:create("Task", largeTask)
     table.insert(luaTeam.tasks, largeTask)
+
+    -- Or using indexing assignment:
+    local lastIndex = #luaTeam.tasks + 1
+    luaTeam.tasks[lastIndex] = largeTask
 end)
 ```
 
-## Delete a Realm Object
+## Delete Realm Objects
 
 An object can be deleted by passing it to `realm:delete()` within a write transaction:
 
 ```Lua
 realm:write(function ()
-    realm:delete(smallTask)
+    realm:delete(largeTask)
+    largeTask = nil
 end)
 ```
 
@@ -259,7 +263,7 @@ end)
 
 **Collection Changes**:
 
-To get notified of changes in a collection (e.g. in the `Team` or `Task` collection) you need to call `<collection>:addListener()` and pass a callback function that will be called whenever an object is deleted, inserted, or modified.
+To get notified of changes in a collection (e.g. in the `Team` or `Task` collection) you need to call `<collection>:addListener()` and pass a callback function that will be called whenever an object is deleted, inserted, or modified. (It will also get called when it is added as a listener.)
 
 The callback function will be called with two arguments:
 1. The collection itself.
@@ -285,7 +289,7 @@ local onTaskCollectionChange = function (collection, changes)
     end
 end
 
--- You currently need to save the return value to a variable
+-- Add the listener (you currently need to save the return value to a variable)
 local _ = tasks:addListener(onTaskCollectionChange)
 ```
 
@@ -293,7 +297,7 @@ local _ = tasks:addListener(onTaskCollectionChange)
 
 **Object Changes**:
 
-To get notified of changes to a specific object you need to call `<object>:addListener()` and pass a callback function that will be called whenever the object is deleted or modified.
+To get notified of changes to a specific object you need to call `<object>:addListener()` and pass a callback function that will be called whenever the object is deleted or modified. (It will also get called when it is added as a listener.)
 
 The callback function will be called with two arguments:
 1. The object itself.
@@ -311,8 +315,8 @@ local onTaskObjectChange = function (object, changes)
     end
 end
 
--- You currently need to save the return value to a variable
-local _ = largeTask:addListener(onTaskObjectChange)
+-- Add the listener (you currently need to save the return value to a variable)
+local _ = smallTask:addListener(onTaskObjectChange)
 ```
 
 ## Add Device Sync (Optional)
@@ -394,10 +398,10 @@ To authenticate and log in a user they must first register by calling `App:regis
 (This registration step can be skipped for anonymous logins.)
 
 ```Lua
-local myEmail = "jane@example.com"
-local myPassword = "123456"
+local janesEmail = "jane@example.com"
+local janesPassword = "123456"
 
-app:registerEmail(myEmail, myPassword, function (error)
+app:registerEmail(janesEmail, janesPassword, function (err)
     -- Called when registration is completed..
 end)
 ```
@@ -410,12 +414,12 @@ The callback function will be called with one or two arguments:
 
 ```Lua
 -- Email/password credentials
-local credentials = App.credentials.emailPassword(myEmail, myPassword)
+local credentials = App.credentials.emailPassword(janesEmail, janesPassword)
 
 -- Or anonymous credentials
 local credentials = App.credentials.anonymous()
 
-app:logIn(credentials, function (user, error)
+app:logIn(credentials, function (user, err)
     -- Called when login is completed..
 end)
 ```
@@ -430,12 +434,12 @@ Similar to opening a non-sync realm, pass a configuration object to `Realm.open(
 local realm
 local currentUser
 
-app:registerEmail(myEmail, myPassword, function (error)
+app:registerEmail(janesEmail, janesPassword, function (err)
     -- Called when registration is completed..
 
-    local credentials = App.credentials.emailPassword(myEmail, myPassword)
+    local credentials = App.credentials.emailPassword(janesEmail, janesPassword)
 
-    app:logIn(credentials, function (user, error)
+    app:logIn(credentials, function (user, err)
         -- Called when login is completed..
 
         currentUser = user
@@ -445,8 +449,8 @@ app:registerEmail(myEmail, myPassword, function (error)
                 user = user,
                 -- Add the team's name as the partition value. We will soon create
                 -- a new team called "Lua Sync" that we want to sync to this realm.
-                -- The value must be the raw Extended JSON string in order to
-                -- be compatible with MongoDB documents. (Manually add `"`.)
+                -- The value must be the raw Extended JSON string in order to be
+                -- compatible with MongoDB documents. (Manually add `"`.)
                 partitionValue = "\"Lua Sync\""
             }
         })
@@ -474,6 +478,7 @@ local syncedTask = {
     -- Optionally set the current user as the assignee
     assigneeId = currentUser.identity
 }
+
 local syncedTeam = {
     _id = math.random(1, 100000),
     -- Provide the partition value
@@ -488,9 +493,54 @@ realm:write(function ()
 end)
 ```
 
+### Troubleshooting
+
+A great way to troubleshoot sync-related erros is to read the [logs in the App Services UI](https://www.mongodb.com/docs/atlas/app-services/logs/logs-ui/).
+
 # Examples
 
-Some minimal examples of Realm use can be found in [main.lua](main.lua). The examples are similar to the code demonstrated in this README but also includes error handling.
+Some minimal examples of Realm use can be found in:
+* [main.lua](main.lua) - Example using a local (non-sync) Realm
+* [mainSync.lua](mainSync.lua) - Example using a synced Realm
+
+The examples are similar to the code demonstrated in this README but also includes error handling.
+
+## Run the Local (Non-Sync) Realm Example
+
+The `main.lua` file can be run from the root directory using the following command:
+
+```sh
+lua main.lua
+```
+
+## Run the Synced Realm Example
+
+Before running the example, you must:
+1. Follow the [prequisites for adding Device Sync](#add-device-sync-optional) and:
+    * Create your own App Services App
+    * Enable email/password authentication
+    * Enable partition-based sync and set `_partition` as the partition key
+2. Copy your [App ID](https://www.mongodb.com/docs/atlas/app-services/reference/find-your-project-or-app-id/#std-label-find-your-app-id) from the App Services UI
+3. Paste the copied App ID as the value of the existing variable `APP_ID` in `mainSync.lua`:
+```Lua
+local APP_ID = "YOUR_APP_ID"
+```
+
+Once done, it can be run from the root directory using the following command:
+
+```sh
+lua mainSync.lua
+```
+
+> ℹ️ If you get disconnected the first time you run it, simply run it one more time.
+
+# Tests
+
+Tests are located in [spec/realm_spec.lua](spec/realm_spec.lua) and can be run from the root directory using the following command:
+
+```sh
+luarocks test realm-lua-dev-1.rockspec
+```
 
 # Contributing
 
@@ -498,8 +548,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for more details!
 
 # Code of Conduct
 
-This project adheres to the [MongoDB Code of Conduct](https://www.mongodb.com/community-code-of-conduct). By participating, you are expected to uphold this code. Please report
-unacceptable behavior to [community-conduct@mongodb.com](mailto:community-conduct@mongodb.com).
+This project adheres to the [MongoDB Code of Conduct](https://www.mongodb.com/community-code-of-conduct). By participating, you are expected to uphold this code. Please report unacceptable behavior to [community-conduct@mongodb.com](mailto:community-conduct@mongodb.com).
 
 # License
 

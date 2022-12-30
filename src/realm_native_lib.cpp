@@ -491,6 +491,19 @@ static int lib_realm_set_size(lua_State *L)
     return 1;
 }
 
+static int lib_realm_set_erase(lua_State *L)
+{
+    // Get arguments from the stack.
+    realm_set_t **realm_set = (realm_set_t **)lua_touserdata(L, 1);
+    std::optional<realm_value_t> value = lua_to_realm_value(L, 2);
+
+    // Get size of list and push onto the stack.
+    bool out_erased;
+    realm_set_erase(*realm_set, *value, &out_erased);
+    lua_pushboolean(L, out_erased);
+    return 1;
+}
+
 static int lib_realm_set_find(lua_State *L)
 {
     // Get arguments from the stack.
@@ -535,6 +548,7 @@ static const luaL_Reg lib[] = {
     {"realm_get_list", lib_realm_get_list},
     {"realm_get_set", lib_realm_get_set},
     {"realm_set_size", lib_realm_set_size},
+    {"realm_set_erase", lib_realm_set_erase},
     {"realm_set_find", lib_realm_set_find},
     {"realm_set_insert", lib_realm_set_insert},
     {NULL, NULL}};

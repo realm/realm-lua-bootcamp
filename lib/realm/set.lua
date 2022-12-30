@@ -3,20 +3,27 @@ local RealmObject = require "realm.object"
 
 ---@class RealmSet
 ---@field class Realm.Schema.ClassInformation The class information.
----@field _handle userdata The realm list userdata.
+---@field remove function removes the object from the set.
+---@field _handle userdata The realm set userdata.
 ---@field _realm Realm The realm.
 local RealmSet = {}
 
+---@param self Realm.Set The realm set.
+---@param value the value to remove.
+---@return Realm.Results
+local function remove(self, value)
+    return native.realm_set_erase(self._handle, value)
+end
 ---@param realm Realm The realm.
 ---@param handle userdata The realm set userdata.
 ---@param classInfo Realm.Schema.ClassInformation The class information.
 ---@return Realm.Set
-
 function RealmSet:new(realm, handle, classInfo)
     local set = {
         _handle = handle,
         _realm = realm,
         class = classInfo,
+        remove = remove
     }
     table.insert(realm._childHandles, set._handle)
     return setmetatable(set, RealmSet)

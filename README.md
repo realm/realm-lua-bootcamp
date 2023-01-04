@@ -104,12 +104,12 @@ The `properties` field specifies all the required and optional properties belong
 * Collection type
     * `"[]"` (list)
         * A Lua `table` used as an array.
+        * > ℹ️ Realm lists in Lua use 1-based indexing (the Lua standard).
     * `"{}"` (dictionary)
         * A Lua `table` used as a record.
     * `"<>"` (set)
         * A Lua `table` used as a set.
     * When using a collection type, its element type must always be specified (e.g. `"int[]"`).
-    * > ℹ️ Realm collections in Lua uses the Lua 1-based indexing standard.
 * The name of a Realm object type.
     * This refers to the string specified in the `name` field of an object schema.
 * Nullable type
@@ -144,7 +144,7 @@ The supported configurations for a Realm are:
 
 ## Create Realm Objects
 
-Once you have opened a realm, you can create objects in it using `realm:create()`. All writes must occur within a write transaction using `realm:write()`:
+Once you have opened a realm, you can create objects in it using `realm:create()`. All writes must occur within a *write transaction* using `realm:write()`:
 
 ```Lua
 local size = {
@@ -186,6 +186,10 @@ end)
 -- After the write transaction, the same local
 -- variables can now be used as Realm objects.
 ```
+
+Write transactions handle operations in a single, idempotent update. A transaction is all or nothing. Either:
+* All the operations in the transaction succeed, or;
+* If any operation fails, none of the operations complete.
 
 ## Query Realm Objects
 
@@ -319,6 +323,37 @@ end
 local _ = smallTask:addListener(onTaskObjectChange)
 ```
 
+## Lists vs. Sets vs. Dictionaries
+
+Lists are the only Realm collection type where values can be inserted using Lua's `table.insert()` and removed using `table.remove()`. For all collection types, indexing assignment is used (see below).
+
+Note that removing Realm objects from a collection **does not delete it** from the realm. To do that see [Delete Realm Objects](#delete-realm-objects).
+
+* List:
+    ```Lua
+    -- Insert/Update
+    myList[index] = "myValue"
+
+    -- Remove
+    myList[index] = nil
+    ```
+* Set:
+    ```Lua
+    -- Insert
+    mySet["myValue"] = true
+
+    -- Remove
+    mySet["myValue"] = nil
+    ```
+* Dictionary:
+    ```Lua
+    -- Insert/Update
+    myDictionary["myKey"] = "myValue"
+
+    -- Remove
+    myDictionary["myKey"] = nil
+    ```
+
 ## Add Device Sync (Optional)
 
 If you want to sync Realm data across devices, you can set up an [Atlas App Services App](https://www.mongodb.com/docs/atlas/app-services/manage-apps/create/create-with-ui/) and enable Device Sync.
@@ -388,7 +423,7 @@ local App = require "realm.app"
 Pass a configuration object to `App.new()` containing an `appId` field with the App ID you copied from the App Services UI:
 
 ```Lua
-local app = App.new({ appId = "<YOUR_APP_ID>" })
+local app = App.new({ appId = "YOUR_APP_ID" })
 ```
 
 ### Authenticate a User
@@ -447,10 +482,12 @@ app:registerEmail(janesEmail, janesPassword, function (err)
             schema = { TeamSchema, TaskSchema },
             sync = {
                 user = user,
-                -- Add the team's name as the partition value. We will soon create
-                -- a new team called "Lua Sync" that we want to sync to this realm.
-                -- The value must be the raw Extended JSON string in order to be
-                -- compatible with MongoDB documents. (Manually add `"`.)
+                -- To sync all objects belonging to a team called "Lua Sync" 
+                -- (i.e. all objects with the "_partition" field set to "Lua
+                -- Sync"), we add it as the partition value. (We will soon
+                -- create a team with this name.) The value must be the raw
+                -- Extended JSON string in order to be compatible with documents
+                -- stored in MongoDB Atlas. (Manually add `"` around the string.)
                 partitionValue = "\"Lua Sync\""
             }
         })
@@ -495,7 +532,7 @@ end)
 
 ### Troubleshooting
 
-A great way to troubleshoot sync-related erros is to read the [logs in the App Services UI](https://www.mongodb.com/docs/atlas/app-services/logs/logs-ui/).
+A great way to troubleshoot sync-related errors is to read the [logs in the App Services UI](https://www.mongodb.com/docs/atlas/app-services/logs/logs-ui/).
 
 # Examples
 

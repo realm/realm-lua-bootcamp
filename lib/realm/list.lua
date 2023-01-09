@@ -31,8 +31,8 @@ function RealmList:__index(key)
     return value
 end
 
---- @param key int The index to fetch or delete the value from.
---- @param value any The Value to insert, if nil this operation becomes a deletion.
+--- @param key int The index to add the value to or delete the value from.
+--- @param value any The value to insert, or if nil, the value gets removed from the list. Note that removing Realm objects from the list do not delete them from the realm. To permanently delete the object, use `Realm:delete(object)`.
 function RealmList:__newindex(index, value)
     -- assigning a value to nil means a deletion
     if value == nil then

@@ -432,7 +432,7 @@ static int lib_realm_list_size(lua_State *L) {
 static int lib_realm_list_erase(lua_State *L)
 {
     // Get arguments from the stack.
-    realm_list_t **realm_list = (realm_list_t **)lua_touserdata(L, 1);
+    realm_list_t** realm_list = (realm_list_t**)lua_touserdata(L, 1);
     size_t index = lua_tointeger(L, 2);
 
     if (!realm_list_erase(*realm_list, index))

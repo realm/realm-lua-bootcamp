@@ -237,22 +237,23 @@ describe("Realm Lua tests", function()
         it("removes objects by assigning to nil", function()
             local petList = testPerson.pets
             local currentLength
+            local testPetC
             realm:write(function() 
-                local testPetC = realm:create("Pet", { name = "TurtleC"})
+                testPetC = realm:create("Pet", { name = "TurtleC"})
                 table.insert(petList, testPetC)
                 currentLength = #petList
                 petList[currentLength] = nil
             end)
             assert.is.equal(#petList, currentLength-1)
-            -- check that the removed object still exists by accessing one of its properties.
-            assert.is.equal(testPetC.name "TurtleC")
+            -- check that object still exists.
+            assert.True(realm:isValid(testPetC))
         end)
         it("removes primitives by assigning to nil", function()
             local intList = testPerson.ints
             local currentLength
             realm:write(function() 
                 table.insert(intList, 1)
-                currentLength = #petList
+                currentLength = #intList
                 intList[currentLength] = nil
             end)
             assert.is.equal(#intList, currentLength-1)
@@ -260,22 +261,24 @@ describe("Realm Lua tests", function()
         it("removes objects with built in remove", function()
             local petList = testPerson.pets
             local currentLength
+            local testPetC
             realm:write(function() 
-                local testPetC = realm:create("Pet", { name = "TurtleC"})
+                testPetC = realm:create("Pet", { name = "TurtleC"})
                 table.insert(petList, testPetC)
                 currentLength = #petList
                 table.remove(petList, currentLength)
             end)
             assert.is.equal(#petList, currentLength-1)
-            -- check that the removed object still exists by accessing one of its properties.
-            assert.is.equal(testPetC.name "TurtleC")
+            -- check that object still exists.
+            assert.True(realm:isValid(testPetC))
+
         end)
         it("removes primitives by assigning to nil", function()
             local intList = testPerson.ints
             local currentLength
             realm:write(function() 
                 table.insert(intList, 1)
-                currentLength = #petList
+                currentLength = #intList
                 table.remove(intList, currentLength)
             end)
             assert.is.equal(#intList, currentLength-1)

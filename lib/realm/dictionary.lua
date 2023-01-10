@@ -22,4 +22,27 @@ function RealmDictionary:new(realm, handle, classInfo)
     return setmetatable(dictionary, RealmDictionary)
 end
 
+function RealmDictionary:__index(key)
+    local value = native.realm_dictionary_find(self._handle, key, self._realm._handle)
+    if type(value) == "userdata" then
+        return RealmObject._new(self._realm, self.class, {}, value)
+    end
+    return value
+end
+
+function RealmDictionary:__newindex(key, value)
+    if type(value) == "table" then
+        value = value._handle
+    end
+    if value == nil then
+        native.realm_dictionary_erase(self._handle, key)
+        return
+    end
+    native.realm_dictionary_insert(self._handle, key, value)
+end
+
+function RealmDictionary:__len()
+    return native.realm_dictionary_size(self._handle)
+end
+
 return RealmDictionary

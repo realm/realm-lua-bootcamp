@@ -84,11 +84,15 @@ end
 --- @param prop string The property name.
 function RealmObject:__index(prop)
     local property = self.class.properties[prop]
+    local targetClassInfo = self._realm._schema[property.objectType]
     if (property.collectionType == classes.CollectionType.List) then
         local RealmList = require "realm.list"
-        local targetClassInfo = self._realm._schema[property.objectType]
         local listHandle = native.realm_get_list(self._handle, property.key)
         return RealmList:new(self._realm, listHandle, targetClassInfo)
+    elseif (property.collectionType == classes.CollectionType.Dictionary) then
+        local RealmDictionary = require "realm.dictionary"
+        local dictionaryHandle = native.realm_get_dictionary(self._handle, property.key)
+        return RealmDictionary:new(self._realm, dictionaryHandle, targetClassInfo)
     end
 
     -- refClass is only returned if the field is a reference to an object.

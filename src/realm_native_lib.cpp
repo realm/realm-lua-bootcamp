@@ -442,6 +442,78 @@ static int lib_realm_get_list(lua_State *L) {
     return 1;
 }
 
+static int lib_realm_get_dictionary(lua_State *L) {
+    // Get arguments from the stack.
+    realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 1);
+    realm_property_key_t& property_key = *(static_cast<realm_property_key_t*>(lua_touserdata(L, 2)));
+
+    // Get and push the list onto the stack and set its metatable.
+    realm_dictionary_t** realm_dictionary = static_cast<realm_dictionary_t**>(lua_newuserdata(L, sizeof(realm_dictionary_t*)));
+    luaL_setmetatable(L, RealmHandle);
+    *realm_dictionary = realm_get_dictionary(*realm_object, property_key);
+
+    return 1;
+}
+
+static int lib_realm_dictionary_find(lua_State *L) {
+    // Get arguments from the stack.
+    realm_dictionary_t** realm_dictionary = (realm_dictionary_t**)lua_touserdata(L, 1);
+    auto key = lua_to_realm_value(L, 2);
+    realm_t **realm = (realm_t**)lua_touserdata(L, 3);
+
+    realm_value_t out_value;
+    if (!realm_dictionary_find(*realm_dictionary, *key, &out_value, nullptr)) {
+        // Exception ocurred while trying to fetch value.
+        return _inform_realm_error(L);
+    }
+
+    // Convert the Realm value to its corresponding Lua value and push onto the stack.
+    return realm_to_lua_value(L, *realm, out_value);
+}
+
+static int lib_realm_dictionary_size(lua_State *L) {
+    // Get arguments from the stack.
+    realm_dictionary_t** realm_dictionary = (realm_dictionary_t**)lua_touserdata(L, 1);
+
+    // Get size of list and push onto the stack.
+    size_t out_size;
+    if (!realm_dictionary_size(*realm_dictionary, &out_size)) {
+        return _inform_realm_error(L);
+    }
+    lua_pushinteger(L, out_size);
+
+    return 1;
+}
+
+static int lib_realm_dictionary_insert(lua_State *L) {
+    // Get arguments from the stack.
+    std::optional<realm_value_t> value = lua_to_realm_value(L, 3);
+    if (!value) {
+        _inform_error(L, "No corresponding realm value found");
+        return 0;
+    }
+    realm_dictionary_t** realm_dictionary = (realm_dictionary_t**)lua_touserdata(L, 1);
+    std::optional<realm_value_t> index = lua_to_realm_value(L, 2);
+    bool success = realm_dictionary_insert(*realm_dictionary, *index, *value, nullptr, nullptr);
+    if (!success) {
+        return _inform_realm_error(L);
+    }
+
+    return 0;
+}
+
+static int lib_realm_dictionary_erase(lua_State *L) {
+    // Get arguments from the stack.
+    realm_dictionary_t** realm_dictionary = (realm_dictionary_t**)lua_touserdata(L, 1);
+    auto key = lua_to_realm_value(L, 2);
+    bool success = realm_dictionary_erase(*realm_dictionary, *key, nullptr);
+    if (!success) {
+        return _inform_realm_error(L);
+    }
+
+    return 0;
+}
+
 static const luaL_Reg lib[] = {
   {"realm_open",                                lib_realm_open},
   {"realm_release",                             lib_realm_release},
@@ -464,6 +536,11 @@ static const luaL_Reg lib[] = {
   {"realm_list_get",                            lib_realm_list_get},
   {"realm_list_size",                           lib_realm_list_size},
   {"realm_get_list",                            lib_realm_get_list},
+  {"realm_get_dictionary",                      lib_realm_get_dictionary},
+  {"realm_dictionary_find",                     lib_realm_dictionary_find},
+  {"realm_dictionary_size",                     lib_realm_dictionary_size},
+  {"realm_dictionary_insert",                   lib_realm_dictionary_insert},
+  {"realm_dictionary_erase",                    lib_realm_dictionary_erase},
   {NULL, NULL}
 };
 

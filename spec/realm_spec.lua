@@ -71,7 +71,9 @@ local schema = {
             age = "int",
             pet = "Pet?",
             pets = "Pet[]",
-            ints = "int[]"
+            ints = "int[]",
+            petDictionary = "Pet{}?",
+            intDictionary = "int{}"
         }
     },
     {
@@ -233,6 +235,79 @@ describe("Realm Lua tests", function()
             local intList = testPerson.ints
             assert.is.equal(#intList, 2)
             assert.is.equal(intList[2], 2)
+        end)
+    end)
+    describe("with dictionaries", function()
+        local testPetA
+        local testPetB
+        setup(function()
+            realm:write(function() 
+                testPetA = realm:create("Pet", { name = "TurtleA"})
+                testPetB = realm:create("Pet", { name = "TurtleB"})
+                testPerson.petDictionary["pet1"] = testPetA
+                testPerson.petDictionary["pet2"] = testPetB
+                testPerson.intDictionary["1"] = 1 
+                testPerson.intDictionary["2"] = 2 
+            end)
+        end)
+        teardown(function() _delete(realm, {testPetA, testPetB}) end)
+        it("inserts objects", function()
+            local petDictionary = testPerson.petDictionary
+            assert.is.equal(#petDictionary, 2)
+            assert.is.equal(petDictionary["pet1"].name, "TurtleA")
+        end)
+        it("inserts primitives", function()
+            local intDictionary = testPerson.intDictionary
+            assert.is.equal(#intDictionary, 2)
+            assert.is.equal(intDictionary["2"], 2)
+        end)
+        it("removes objects", function()
+            local petDictionary = testPerson.petDictionary
+            local testPetC
+            realm:write(function()
+                testPetC = realm:create("Pet", { name = "TurtleC"})
+                petDictionary["pet3"] = testPetC
+            end)
+            local currentLength = #petDictionary
+            realm:write(function()
+                petDictionary["pet3"] = nil 
+            end)
+            assert.is.equal(#petDictionary, currentLength-1)
+        end)
+        it("removes primitives", function()
+            local intDictionary = testPerson.intDictionary
+            realm:write(function()
+                intDictionary["3"] = 3
+            end)
+            local currentLength = #intDictionary
+            realm:write(function()
+                intDictionary["3"] = nil
+            end)
+            assert.is.equal(#intDictionary, currentLength-1)
+        end)
+        it("writing to same key overwrites objects", function()
+            local petDictionary = testPerson.petDictionary
+            local currentLength = #petDictionary
+            local testPetC
+            realm:write(function()
+                testPetC = realm:create("Pet", { name = "TurtleC"})
+                -- should write over TurtleA
+                petDictionary["pet1"] = testPetC
+            end)
+            -- length of dictionary should remain the same
+            assert.is.equal(#petDictionary, currentLength)
+            assert.is.equal(petDictionary["pet1"].name, "TurtleC")
+        end)
+        it("writing to same key overwrites primitives", function()
+            local intDictionary = testPerson.intDictionary
+            local currentLength = #intDictionary
+            realm:write(function()
+                -- should write over value 1 
+                intDictionary["1"] = 2
+            end)
+            -- length of dictionary should remain the same
+            assert.is.equal(#intDictionary, currentLength)
+            assert.is.equal(intDictionary["1"], 2)
         end)
     end)
 end)

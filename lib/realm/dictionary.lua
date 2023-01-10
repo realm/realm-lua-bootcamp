@@ -22,6 +22,7 @@ function RealmDictionary:new(realm, handle, classInfo)
     return setmetatable(dictionary, RealmDictionary)
 end
 
+--- @param key string The key to look up in the set.
 function RealmDictionary:__index(key)
     local value = native.realm_dictionary_find(self._handle, key, self._realm._handle)
     if type(value) == "userdata" then
@@ -30,6 +31,8 @@ function RealmDictionary:__index(key)
     return value
 end
 
+--- @param key string The key to look up in the set.
+--- @param value string | number | boolean | Realm.Object The value to add to the dictionary.
 function RealmDictionary:__newindex(key, value)
     if type(value) == "table" then
         value = value._handle

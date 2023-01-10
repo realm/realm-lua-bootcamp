@@ -28,6 +28,7 @@ function RealmSet:__index(value)
     return native.realm_set_find(self._handle, value)
 end
 
+--- @param entry string | number | boolean | Realm.Object The entry to add to the set.
 --- @param value true | nil True implies that the entry should be inserted in the set. Nil means deletion.
 function RealmSet:__newindex(entry, value)
     if type(entry) == "table" then

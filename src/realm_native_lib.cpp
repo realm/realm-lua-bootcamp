@@ -429,6 +429,19 @@ static int lib_realm_list_size(lua_State *L) {
     return 1;
 }
 
+static int lib_realm_list_erase(lua_State *L)
+{
+    // Get arguments from the stack.
+    realm_list_t** realm_list = (realm_list_t**)lua_touserdata(L, 1);
+    size_t index = lua_tointeger(L, 2);
+
+    if (!realm_list_erase(*realm_list, index))
+    {
+        return _inform_realm_error(L);
+    }
+    return 0;
+}
+
 static int lib_realm_get_list(lua_State *L) {
     // Get arguments from the stack.
     realm_object_t** realm_object = (realm_object_t**)lua_touserdata(L, 1);
@@ -541,6 +554,7 @@ static const luaL_Reg lib[] = {
   {"realm_dictionary_size",                     lib_realm_dictionary_size},
   {"realm_dictionary_insert",                   lib_realm_dictionary_insert},
   {"realm_dictionary_erase",                    lib_realm_dictionary_erase},
+  {"realm_list_erase",                          lib_realm_list_erase},
   {NULL, NULL}
 };
 

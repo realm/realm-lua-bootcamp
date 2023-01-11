@@ -93,6 +93,10 @@ function RealmObject:__index(prop)
         local RealmDictionary = require "realm.dictionary"
         local dictionaryHandle = native.realm_get_dictionary(self._handle, property.key)
         return RealmDictionary:new(self._realm, dictionaryHandle, targetClassInfo)
+    elseif (property.collectionType == classes.CollectionType.Set) then
+        local RealmSet = require "realm.set"
+        local setHandle = native.realm_get_set(self._handle, property.key)
+        return RealmSet:new(self._realm, setHandle, targetClassInfo)
     end
 
     -- refClass is only returned if the field is a reference to an object.

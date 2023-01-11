@@ -73,7 +73,9 @@ local schema = {
             pets = "Pet[]",
             ints = "int[]",
             petDictionary = "Pet{}?",
-            intDictionary = "int{}"
+            intDictionary = "int{}",
+            petSet = "Pet<>",
+            stringSet = "string<>"
         }
     },
     {
@@ -357,6 +359,69 @@ describe("Realm Lua tests", function()
             -- length of dictionary should remain the same
             assert.is.equal(#intDictionary, currentLength)
             assert.is.equal(intDictionary["1"], 2)
+        end)
+    end)
+    describe("with sets", function()
+        local testPetA
+        local testPetB
+        local testPetC
+        local testPerson
+        setup(function()
+            realm:write(function()
+                testPetA = realm:create("Pet", { name = "TurtleA" })
+                testPetB = realm:create("Pet", { name = "TurtleB" })
+                testPetC = realm:create("Pet", { name = "TurtleC" })
+                testPerson = realm:create("Person", { name = "Peter", age = 3 })
+                testPerson.petSet[testPetA] = true
+                testPerson.petSet[testPetB] = true
+                testPerson.stringSet["foo"] = true
+                testPerson.stringSet["bar"] = true
+            end)
+        end)
+        teardown(function() _delete(realm, { testPetA, testPetB, testPetC }) end)
+        it("length of set with objects is correct", function()
+            local petSet = testPerson.petSet
+            assert.is.equal(#petSet, 2)
+        end)
+        it("length of set with primitive values is correct", function()
+            local stringSet = testPerson.stringSet
+            assert.is.equal(#stringSet, 2)
+        end)
+        it("returns true on object lookup", function()
+            local petSet = testPerson.petSet
+            assert.True(petSet[testPetA])
+            assert.True(petSet[testPetB])
+            assert.False(petSet[testPetC])
+        end)
+        it("returns true on string lookup", function()
+            local stringSet = testPerson.stringSet
+            assert.True(stringSet["foo"])
+            assert.True(stringSet["bar"])
+            assert.False(stringSet["nonExistingValue"])
+        end)
+        it("insert same object entry again does not increase size", function()
+            local petSet = testPerson.petSet
+            assert.is.equal(#petSet, 2)
+            realm:write(function()
+                testPerson.petSet[testPetA] = true
+            end)
+            assert.is.equal(#petSet, 2)
+        end)
+        it("insert same string entry again does not increase size", function()
+            local stringSet = testPerson.stringSet
+            assert.is.equal(#stringSet, 2)
+            realm:write(function()
+                testPerson.stringSet["foo"] = true
+            end)
+            assert.is.equal(#stringSet, 2)
+        end)
+        it("remove element", function()
+            local petSet = testPerson.petSet
+            assert.is.equal(#petSet, 2)
+            realm:write(function()
+                petSet[testPetA] = nil
+            end)
+            assert.is.equal(#petSet, 1)
         end)
     end)
 end)

@@ -75,7 +75,7 @@ size_t curl_header_cb(char* buffer, size_t size, size_t nitems, std::map<std::st
 
 class CurlHttpTransport : public app::GenericNetworkTransport {
 public:
-    void send_request_to_server(app::Request&& request,
+    void send_request_to_server(const app::Request& request,
                                 util::UniqueFunction<void(const app::Response&)>&& completion_block)
     {
         CurlGlobalGuard curl_global_guard;

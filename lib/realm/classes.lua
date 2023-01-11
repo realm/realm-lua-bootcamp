@@ -8,6 +8,7 @@
 ---@see Realm.Object
 ---@see Realm.Results
 ---@see Realm.List
+---@see Realm.Set
 
 ---@class Realm.Config
 ---@field path string The path to the realm being opened.

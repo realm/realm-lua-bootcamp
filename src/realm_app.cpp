@@ -57,6 +57,7 @@ static int lib_realm_app_create(lua_State* L) {
     // Get configuration objects needed to create a realm app.
     realm_app_config_t* app_config = realm_app_config_new(app_id, http_transport);
     realm_app_config_set_platform(app_config, "Realm Lua");
+    realm_app_config_set_sdk(app_config, "Lua");
     realm_app_config_set_sdk_version(app_config, "0.0.1-alpha");
     realm_app_config_set_platform_version(app_config, "macOS");
 

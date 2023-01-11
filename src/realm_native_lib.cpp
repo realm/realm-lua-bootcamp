@@ -511,7 +511,7 @@ static int lib_realm_set_find(lua_State *L)
     realm_set_t **realm_set = (realm_set_t **)lua_touserdata(L, 1);
     std::optional<realm_value_t> value = lua_to_realm_value(L, 2);
     bool out_found;
-    if (!realm_set_find(*realm_set, *value, NULL, &out_found))
+    if (!realm_set_find(*realm_set, *value, nullptr, &out_found))
     {
         return _inform_realm_error(L);
     }

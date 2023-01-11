@@ -22,15 +22,28 @@ function RealmList:new(realm, handle, classInfo)
     return setmetatable(list, RealmList)
 end
 
+--- @param key int The index to fetch the value from.
 function RealmList:__index(key)
-    -- TODO: For now it's assumed that we only get objects.
-    local handle = native.realm_list_get(self._handle, self._realm._handle, key - 1)
-
-    return RealmObject._new(self._realm, self.class, {}, handle)
+    local value = native.realm_list_get(self._handle, self._realm._handle, key - 1)
+    if type(value) == "userdata" then
+        return RealmObject._new(self._realm, self.class, {}, value)
+    end
+    return value
 end
 
+--- @param key int The index to add the value to or delete the value from.
+--- @param value any The value to insert, or if nil, the value gets removed from the list. Note that removing Realm objects from the list do not delete them from the realm. To permanently delete the object, use `Realm:delete(object)`.
 function RealmList:__newindex(index, value)
-    native.realm_list_insert(self._handle, index - 1, value._handle)
+    -- assigning a value to nil means a deletion
+    if value == nil then
+        native.realm_list_erase(self._handle, index - 1)
+        return
+    end
+    -- A realm object type in Lua will correspond to a "table"
+    if type(value) == "table" then
+        value = value._handle
+    end
+    native.realm_list_insert(self._handle, index - 1, value)
 end
 
 function RealmList:__len()

@@ -1,6 +1,6 @@
 ---@module "realm.scheduler"
 
----@alias Realm.Schema.PropertyType string | "bool" | "int" | "float" | "string"
+---@alias Realm.Schema.PropertyType string | "bool" | "int" | "double" | "string"
 
 ---Externally defined classes
 ---@see Realm.App
